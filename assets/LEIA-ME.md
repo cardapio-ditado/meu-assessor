@@ -1,48 +1,41 @@
 # Fotos da campanha
 
-> **Já estão no ar:** `italo.jpg` e `renan.jpg`.
-> A pasta `originais/` guarda os arquivos como foram enviados — a foto do Renan
-> foi recortada a partir dela para remover o logo da CNM e a tarja colorida do
-> rodapé, que não devem aparecer em material de campanha.
+## Estado atual
 
-Para trocar qualquer foto, basta substituir o arquivo mantendo o nome:
-
-| Arquivo | Quem | Onde aparece |
-|---|---|---|
-| `italo.jpg` | Ítalo Moreira | Foto principal do topo **e** avatar do Instagram |
-| `renan.jpg` | Renan Santos | Seção "Nosso candidato a Presidente" |
-
-E, opcionalmente, os posts do feed em `assets/insta/`:
-
-| Arquivos | Onde aparece |
+| Item | Situação |
 |---|---|
-| `post-01.jpg` … `post-09.jpg` | Grade 3×3 do celular na seção Instagram |
+| `renan.jpg` | ✅ No ar. Recortada do original da Marcha da CNM, sem o logo da confederação nem a tarja do rodapé. |
+| `insta/avatar.jpg` | ✅ No ar. Recortado do print do perfil. |
+| `insta/post-01.jpg` … `post-09.jpg` | ✅ No ar. Os 9 primeiros posts reais do feed. |
+| `insta/destaque-vaquinha.jpg` | ✅ No ar. Destaque "Vaquinha!". |
+| `italo.jpg` | ❌ **Falta.** A foto enviada como `iTALO.jpg` é de outra pessoa — ver abaixo. |
 
-Cada post que existir substitui o card de texto correspondente e continua
-clicando para o perfil. Pode subir só alguns — os que faltarem seguem como
-card tipográfico. O melhor formato é vertical (360×640, print do próprio feed).
+## Atenção: a foto do topo ainda não é do Ítalo
 
-Salvou os arquivos? Recarregue o `index.html` — as fotos entram sozinhas.
-Sem os arquivos, a página continua funcionando e mostra as molduras douradas
-de reserva (nada quebra).
+O arquivo enviado como `iTALO.jpg` (fundo laranja) foi comparado com a foto
+oficial de urna legendada "ÍTALO MOREIRA" no post do próprio perfil e com o
+avatar do Instagram: **é outra pessoa**. Ele está guardado em
+`originais/FOTO-NAO-E-O-ITALO-conferir.jpg` e foi retirado da página.
 
-## Dicas de enquadramento
+Para completar, envie uma foto oficial do Ítalo e salve como `assets/italo.jpg`:
 
-- **Vertical funciona melhor** (proporção 4:5, tipo 1200×1500 px).
-- O rosto deve estar no **terço superior** da imagem — o corte é automático
-  e favorece essa área.
-- Marca d'água, logo ou tarja no **rodapé** da foto some sozinha: existe um
-  degradê que apaga a base da imagem.
-- Fundo colorido (laranja, azul, verde) não é problema: a página aplica um
-  tratamento preto-e-amarelo que unifica qualquer foto na identidade do Missão.
+- vertical, proporção 4:5 (ideal 1200×1500 px ou maior);
+- rosto no terço superior;
+- fundo de qualquer cor — a página aplica o tratamento do Missão;
+- marca d'água no rodapé some sozinha.
 
-## Quer ajustar o corte de uma foto específica?
+Enquanto o arquivo não existir, a moldura dourada de reserva aparece no lugar
+e nada quebra.
 
-No `index.html`, na moldura correspondente, mude o valor de `--pos`
-(horizontal e vertical, em %):
+## Trocar qualquer foto
+
+Basta substituir o arquivo mantendo o nome. Para ajustar o corte, mude
+`--pos` na moldura correspondente do `index.html`:
 
 ```html
 <div class="photo-frame" style="--pos:50% 18%">
 ```
 
 Menor o segundo número, mais alto o corte fica na foto.
+
+`originais/` guarda tudo como foi enviado, incluindo o .zip do WhatsApp.
