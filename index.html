@@ -240,32 +240,24 @@
   .ph-img{
     position:absolute;inset:0;width:100%;height:100%;
     object-fit:cover;object-position:var(--pos,50% 22%);
-    filter:grayscale(.32) contrast(1.08) saturate(.85) brightness(.97);
+    filter:saturate(1.10) contrast(1.05);
     opacity:0;transition:opacity .6s ease;z-index:1;
   }
   .photo-frame.ready .ph-img{opacity:1}
   .photo-frame.ready .ph-empty{display:none}
-  .photo-frame.ready::before{opacity:.22}
+  .photo-frame.ready::before{opacity:0}
   /* duotone preto→amarelo + vinheta que apaga marca d'água no rodapé da foto */
   .photo-frame .duo{
     position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0;transition:opacity .6s ease;
-    background:
-      radial-gradient(120% 80% at 50% 8%,rgba(255,196,0,.16),transparent 58%),
-      linear-gradient(180deg,transparent 52%,color-mix(in srgb, var(--frame-fade,var(--ink)) 70%, transparent) 86%,var(--frame-fade,var(--ink)) 100%);
+    background:linear-gradient(180deg,transparent 72%,color-mix(in srgb, var(--frame-fade,var(--ink)) 45%, transparent) 92%,color-mix(in srgb, var(--frame-fade,var(--ink)) 85%, transparent) 100%);
   }
   .photo-frame.ready .duo{opacity:1}
+  .photo-frame.ready{background:var(--ink)}
   .section.claro .duo{
-    background:
-      radial-gradient(120% 80% at 50% 8%,rgba(255,196,0,.10),transparent 60%),
-      linear-gradient(180deg,transparent 62%,rgba(21,19,13,.16) 92%,rgba(21,19,13,.24) 100%);
+    background:linear-gradient(180deg,transparent 76%,rgba(21,19,13,.10) 94%,rgba(21,19,13,.16) 100%);
   }
-  .section.claro .duo::after{opacity:.05}
-  .section.claro .ph-img{filter:grayscale(.12) contrast(1.04) saturate(.95)}
-  .section.claro .photo-frame::before{opacity:.14}
-  .photo-frame .duo::after{
-    content:"";position:absolute;inset:0;
-    background:var(--onca);mix-blend-mode:color;opacity:.14;
-  }
+  .section.claro .ph-img{filter:saturate(1.06) contrast(1.03)}
+
   .photo-tag{
     position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
     font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;
@@ -660,7 +652,7 @@
     </div>
     <div>
       <div class="photo-frame" id="heroPhoto">
-        <img class="ph-img" src="assets/italo.jpg?v=4" alt="Ítalo Moreira" loading="eager"
+        <img class="ph-img" src="assets/italo.jpg?v=5" alt="Ítalo Moreira" loading="eager"
              onload="this.closest('.photo-frame').classList.add('ready')" onerror="this.remove()">
         <span class="duo"></span>
         <span class="ph-empty">
@@ -761,7 +753,7 @@
     <div class="renan-grid">
       <div class="rv">
         <div class="photo-frame" style="--pos:50% 18%">
-          <img class="ph-img" src="assets/renan.jpg?v=3" alt="Renan Santos" loading="lazy"
+          <img class="ph-img" src="assets/renan.jpg?v=5" alt="Renan Santos" loading="lazy"
                onload="this.closest('.photo-frame').classList.add('ready')" onerror="this.remove()">
           <span class="duo"></span>
           <span class="ph-empty">
