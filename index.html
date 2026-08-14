@@ -29,7 +29,18 @@
     --paper:#FBF8F0;
     --stone:#918A79;
     --line:rgba(255,196,0,.16);
-    --ok:#7DD87D;
+    --ok:#2E7D32;
+    /* bandeira: verde e azul entram como detalhe, amarelo faz a ponte com o Missão */
+    --verde:#009B3A;
+    --azul:#1B3C8F;
+    --verde-soft:rgba(0,155,58,.12);
+    --azul-soft:rgba(27,60,143,.12);
+    /* seções claras */
+    --claro:#F6F3EA;
+    --claro-2:#FFFFFF;
+    --tinta:#15130D;
+    --pedra-clara:#6E675A;
+    --linha-clara:rgba(21,19,13,.10);
     --radius:14px;
     --font-display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
     --font-mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
@@ -55,8 +66,30 @@
     font-size:12px;letter-spacing:.28em;text-transform:uppercase;
     color:var(--onca);display:inline-flex;align-items:center;gap:10px;
   }
-  .eyebrow::before{content:"";width:34px;height:2px;background:var(--onca);display:inline-block}
+  /* traço tricolor: verde, amarelo e azul em 34px */
+  .eyebrow::before{
+    content:"";width:34px;height:3px;display:inline-block;border-radius:2px;
+    background:linear-gradient(90deg,var(--verde) 0 33%,var(--onca) 33% 66%,var(--azul) 66% 100%);
+  }
   .section{padding:110px 0;position:relative}
+
+  /* ---------- seções claras: o respiro da página ---------- */
+  .section.claro{
+    background:var(--claro);color:var(--tinta);
+    --stone:var(--pedra-clara);
+    --line:var(--linha-clara);
+    --frame-fade:var(--claro);
+  }
+  .section.claro .sec-lead{color:var(--pedra-clara)}
+  .section.claro .sec-title{color:var(--tinta)}
+  .section.claro .eyebrow{color:var(--verde)}
+  /* costura tricolor entre o escuro e o claro */
+  .section.claro::before,.section.claro::after{
+    content:"";position:absolute;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,var(--verde) 0 33.33%,var(--onca) 33.33% 66.66%,var(--azul) 66.66% 100%);
+  }
+  .section.claro::before{top:0}
+  .section.claro::after{bottom:0;opacity:.35}
   .sec-title{
     font-weight:900;text-transform:uppercase;letter-spacing:-.02em;
     font-size:clamp(34px,5vw,58px);line-height:1.02;margin:18px 0 14px;
@@ -70,6 +103,8 @@
   }
   .hl>span{display:inline-block;transform:skew(6deg)}
   .num{font-variant-numeric:tabular-nums}
+  .forte{color:var(--paper);font-weight:800}
+  .section.claro .forte{color:var(--tinta)}
 
   /* reveal on scroll */
   .rv{opacity:0;transform:translateY(28px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
@@ -78,7 +113,7 @@
   .rv.d4{transition-delay:.32s}.rv.d5{transition-delay:.4s}
 
   /* ---------- barra de progresso ---------- */
-  #progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--onca),#FFE27A);z-index:99;box-shadow:0 0 12px rgba(255,196,0,.7)}
+  #progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--verde),var(--onca) 50%,var(--azul));z-index:99;box-shadow:0 0 12px rgba(255,196,0,.55)}
 
   /* ---------- nav ---------- */
   nav{
@@ -198,9 +233,17 @@
     position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0;transition:opacity .6s ease;
     background:
       radial-gradient(120% 80% at 50% 8%,rgba(255,196,0,.16),transparent 58%),
-      linear-gradient(180deg,transparent 48%,rgba(11,10,8,.70) 86%,var(--ink) 100%);
+      linear-gradient(180deg,transparent 52%,color-mix(in srgb, var(--frame-fade,var(--ink)) 70%, transparent) 86%,var(--frame-fade,var(--ink)) 100%);
   }
   .photo-frame.ready .duo{opacity:1}
+  .section.claro .duo{
+    background:
+      radial-gradient(120% 80% at 50% 8%,rgba(255,196,0,.10),transparent 60%),
+      linear-gradient(180deg,transparent 62%,rgba(21,19,13,.16) 92%,rgba(21,19,13,.24) 100%);
+  }
+  .section.claro .duo::after{opacity:.05}
+  .section.claro .ph-img{filter:grayscale(.12) contrast(1.04) saturate(.95)}
+  .section.claro .photo-frame::before{opacity:.14}
   .photo-frame .duo::after{
     content:"";position:absolute;inset:0;
     background:var(--onca);mix-blend-mode:color;opacity:.14;
@@ -234,6 +277,8 @@
     white-space:nowrap;padding:0 18px;display:flex;align-items:center;gap:18px;
   }
   .marquee .star{font-size:16px}
+  .marquee span i:nth-of-type(3n+1){color:var(--verde)}
+  .marquee span i:nth-of-type(3n+3){color:var(--azul)}
   @keyframes scroll{to{transform:translateX(-50%)}}
 
   /* ---------- números ---------- */
@@ -242,6 +287,16 @@
   }
   @media(max-width:920px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:560px){.stats-grid{grid-template-columns:1fr}}
+  .section.claro .stat,.section.claro .prop{
+    background:var(--claro-2);
+    border-color:rgba(21,19,13,.10);
+    box-shadow:0 2px 10px rgba(21,19,13,.05);
+  }
+  .section.claro .stat .label,.section.claro .prop h3{color:var(--tinta)}
+  .section.claro .stat .note,.section.claro .prop p{color:var(--pedra-clara)}
+  .section.claro .stat:hover,.section.claro .prop:hover{
+    border-color:rgba(0,155,58,.35);box-shadow:0 18px 46px rgba(21,19,13,.12);
+  }
   .stat{
     background:linear-gradient(160deg,var(--coal),var(--ink));
     border:1px solid var(--line);border-radius:var(--radius);
@@ -251,13 +306,13 @@
   .stat:hover{transform:translateY(-6px);border-color:rgba(255,196,0,.45);box-shadow:0 18px 50px rgba(0,0,0,.5)}
   .stat::after{
     content:"";position:absolute;top:0;left:0;right:0;height:3px;
-    background:linear-gradient(90deg,var(--onca),transparent);
+    background:linear-gradient(90deg,var(--acento,var(--onca)),transparent);
     transform:scaleX(0);transform-origin:left;transition:transform .4s;
   }
   .stat:hover::after{transform:scaleX(1)}
   .stat .value{
-    font-weight:900;font-size:clamp(40px,4.6vw,56px);line-height:1;color:var(--onca);
-    letter-spacing:-.02em;
+    font-weight:900;font-size:clamp(40px,4.6vw,56px);line-height:1;
+    color:var(--acento,var(--onca));letter-spacing:-.02em;
   }
   .stat .value small{font-size:.55em;vertical-align:.32em}
   .stat .label{margin-top:10px;font-weight:700;font-size:15px}
@@ -268,17 +323,19 @@
   @media(max-width:920px){.facts{grid-template-columns:1fr}}
   .fact-list{display:flex;flex-direction:column;gap:0}
   .fact{
-    display:flex;gap:20px;padding:22px 6px;border-bottom:1px solid rgba(251,248,240,.08);
+    display:flex;gap:20px;padding:22px 6px;border-bottom:1px solid var(--line);
     transition:background .2s,padding-left .2s;
   }
-  .fact:hover{background:rgba(255,196,0,.04);padding-left:14px}
+  .fact:hover{background:var(--acento-soft,rgba(255,196,0,.06));padding-left:14px}
   .fact .ico{
     flex:0 0 46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;
-    background:var(--onca-soft);border:1px solid var(--line);font-size:20px;color:var(--onca);
+    background:var(--acento-soft,var(--onca-soft));border:1px solid var(--line);font-size:20px;color:var(--acento,var(--onca));
   }
   .fact h4{font-size:17px;font-weight:800;margin-bottom:3px}
+  .section.claro .fact h4{color:var(--tinta)}
+  .section.claro .fact p{color:var(--pedra-clara)}
   .fact p{color:var(--stone);font-size:15px;line-height:1.55}
-  .fact p b{color:var(--paper)}
+  .fact p b{color:inherit;font-weight:800}
 
   /* ---------- propostas ---------- */
   .props-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:56px}
@@ -303,15 +360,26 @@
   .prop p{color:var(--stone);font-size:15px}
   .prop .p-tag{
     position:absolute;top:20px;right:20px;font-family:var(--font-mono);
-    font-size:10px;letter-spacing:.18em;color:rgba(255,196,0,.55);text-transform:uppercase;
+    font-size:10px;letter-spacing:.18em;color:var(--acento,var(--onca));opacity:.6;text-transform:uppercase;
   }
 
   /* ---------- renan ---------- */
-  .renan{
+  .renan.claro{
     background:
-      radial-gradient(900px 500px at 20% 10%,rgba(255,196,0,.10),transparent 60%),
-      linear-gradient(180deg,var(--coal),var(--ink));
-    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+      radial-gradient(900px 520px at 18% 8%,rgba(0,155,58,.07),transparent 62%),
+      radial-gradient(700px 480px at 88% 92%,rgba(27,60,143,.06),transparent 60%),
+      var(--claro);
+  }
+  .renan.claro blockquote{border-left-color:var(--verde);color:var(--tinta)}
+  .renan.claro .chip{background:var(--claro-2);border-color:var(--linha-clara);color:var(--tinta)}
+  .renan.claro .chip b{color:var(--verde)}
+  .renan.claro .partido-band{background:var(--claro-2);border-color:var(--linha-clara)}
+  .renan.claro .partido-band p{color:var(--pedra-clara)}
+  .renan.claro .partido-band p b{color:var(--tinta)}
+  .renan.claro .photo-frame{
+    background:linear-gradient(160deg,#EDE8DC,#DFD8C8);
+    border-color:var(--linha-clara);
+    box-shadow:0 24px 60px rgba(21,19,13,.16);
   }
   .renan-grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:56px;align-items:center}
   @media(max-width:920px){.renan-grid{grid-template-columns:1fr}}
@@ -450,6 +518,22 @@
   /* ---------- faça parte ---------- */
   .join-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;margin-top:40px}
   @media(max-width:920px){.join-grid{grid-template-columns:1fr}}
+  .section.claro form.join{
+    background:var(--claro-2);border-color:var(--linha-clara);
+    box-shadow:0 10px 40px rgba(21,19,13,.07);
+  }
+  .section.claro .field input,.section.claro .field select{
+    background:#FAF8F2;border-color:rgba(21,19,13,.16);color:var(--tinta);
+  }
+  .section.claro .field input::placeholder{color:rgba(21,19,13,.32)}
+  .section.claro .field input:focus,.section.claro .field select:focus{
+    border-color:var(--verde);box-shadow:0 0 0 3px rgba(0,155,58,.16);
+  }
+  .section.claro .join-list p{color:var(--pedra-clara)}
+  .section.claro .join-list p b{color:var(--tinta)}
+  .section.claro .join-list .item:nth-child(1) .n{background:var(--verde);color:#fff}
+  .section.claro .join-list .item:nth-child(3) .n{background:var(--azul);color:#fff}
+  .section.claro .join-ok{background:rgba(0,155,58,.08);border-color:rgba(0,155,58,.35);color:#1B6B2E}
   form.join{
     background:linear-gradient(165deg,var(--coal),var(--ink));
     border:1px solid var(--line);border-radius:20px;padding:40px 36px;
@@ -591,7 +675,7 @@
 </div>
 
 <!-- ======================= NÚMEROS ======================= -->
-<section class="section" id="mandato">
+<section class="section claro" id="mandato">
   <div class="wrap">
     <span class="eyebrow rv">O mandato em números</span>
     <h2 class="sec-title rv">Ninguém trabalhou<br>tanto quanto ele</h2>
@@ -600,35 +684,35 @@
       Não é promessa: é histórico comprovado.
     </p>
     <div class="stats-grid">
-      <div class="stat rv"><div class="value num" data-count="7000">0</div><div class="label">Proposituras apresentadas</div><div class="note">1º vereador da história de Sorocaba a ultrapassar 7 mil</div></div>
-      <div class="stat rv d1"><div class="value num" data-count="111">0</div><div class="label">Projetos aprovados</div><div class="note">Ainda no primeiro mandato</div></div>
-      <div class="stat rv d2"><div class="value num" data-count="2000" data-prefix="~">0</div><div class="label">Requerimentos de fiscalização</div><div class="note">O vereador que mais fiscalizou o Executivo</div></div>
-      <div class="stat rv d3"><div class="value num" data-count="100">0</div><div class="label">Denúncias ao Ministério Público</div><div class="note">E a outros órgãos de controle</div></div>
-      <div class="stat rv d4"><div class="value num" data-count="600">0</div><div class="label">Fiscalizações na saúde</div><div class="note">UBSs, UPHs e Prontos-Atendimentos visitados</div></div>
-      <div class="stat rv d5"><div class="value num" data-count="77" data-suffix=",8 mil">0</div><div class="label">Seguidores no Instagram</div><div class="note">@italomoreirasp — comunicação direta com o povo</div></div>
+      <div class="stat rv" style="--acento:var(--verde);--acento-soft:var(--verde-soft)"><div class="value num" data-count="7000">0</div><div class="label">Proposituras apresentadas</div><div class="note">1º vereador da história de Sorocaba a ultrapassar 7 mil</div></div>
+      <div class="stat rv d1" style="--acento:var(--onca);--acento-soft:var(--onca-soft)"><div class="value num" data-count="111">0</div><div class="label">Projetos aprovados</div><div class="note">Ainda no primeiro mandato</div></div>
+      <div class="stat rv d2" style="--acento:var(--azul);--acento-soft:var(--azul-soft)"><div class="value num" data-count="2000" data-prefix="~">0</div><div class="label">Requerimentos de fiscalização</div><div class="note">O vereador que mais fiscalizou o Executivo</div></div>
+      <div class="stat rv d3" style="--acento:var(--verde);--acento-soft:var(--verde-soft)"><div class="value num" data-count="100">0</div><div class="label">Denúncias ao Ministério Público</div><div class="note">E a outros órgãos de controle</div></div>
+      <div class="stat rv d4" style="--acento:var(--onca);--acento-soft:var(--onca-soft)"><div class="value num" data-count="600">0</div><div class="label">Fiscalizações na saúde</div><div class="note">UBSs, UPHs e Prontos-Atendimentos visitados</div></div>
+      <div class="stat rv d5" style="--acento:var(--azul);--acento-soft:var(--azul-soft)"><div class="value num" data-count="77" data-suffix=",8 mil">0</div><div class="label">Seguidores no Instagram</div><div class="note">@italomoreirasp — comunicação direta com o povo</div></div>
     </div>
   </div>
 </section>
 
 <!-- ======================= FATOS ======================= -->
-<section class="section" style="padding-top:0">
+<section class="section claro" style="padding-top:0">
   <div class="wrap">
     <div class="facts">
       <div>
         <span class="eyebrow rv">Fatos do vereador</span>
         <h2 class="sec-title rv">Histórico que<br><span class="hl"><span>fala por si</span></span></h2>
         <p class="sec-lead rv d1">
-          Eleito em 2024 com o número 44.190, Ítalo se tornou o <b style="color:var(--paper)">3º vereador mais
+          Eleito em 2024 com o número 44.190, Ítalo se tornou o <b class="forte">3º vereador mais
           votado da história de Sorocaba</b>, com 3,03% dos votos válidos da cidade — e transformou
           cada voto em trabalho.
         </p>
       </div>
       <div class="fact-list">
-        <div class="fact rv"><div class="ico">🏆</div><div><h4>Mais produtivo da história</h4><p>Primeiro parlamentar de Sorocaba a atingir <b>5 mil</b> e depois <b>7 mil proposituras</b> em um único mandato.</p></div></div>
-        <div class="fact rv d1"><div class="ico">🔍</div><div><h4>O que mais fiscalizou o Executivo</h4><p>Quase <b>2 mil requerimentos de fiscalização</b> e mais de <b>100 representações</b> no MP e órgãos de controle.</p></div></div>
-        <div class="fact rv d2"><div class="ico">🏥</div><div><h4>Presença real na saúde</h4><p>Mais de <b>600 fiscalizações</b> no tema saúde, com visitas presenciais a todas as UBSs, UPHs e PAs do município.</p></div></div>
-        <div class="fact rv d3"><div class="ico">✊</div><div><h4>Contra privilégios</h4><p>Votou <b>contra o aumento salarial dos vereadores</b>, contra cargos de indicação política e propôs a proibição de nepotismo no Executivo.</p></div></div>
-        <div class="fact rv d4"><div class="ico">💻</div><div><h4>Autor do Governo Digital</h4><p>Projeto que informatiza o serviço público: <b>consulta marcada de casa</b> e prontuário eletrônico na saúde.</p></div></div>
+        <div class="fact rv" style="--acento:var(--verde);--acento-soft:var(--verde-soft)"><div class="ico">🏆</div><div><h4>Mais produtivo da história</h4><p>Primeiro parlamentar de Sorocaba a atingir <b>5 mil</b> e depois <b>7 mil proposituras</b> em um único mandato.</p></div></div>
+        <div class="fact rv d1" style="--acento:var(--onca);--acento-soft:var(--onca-soft)"><div class="ico">🔍</div><div><h4>O que mais fiscalizou o Executivo</h4><p>Quase <b>2 mil requerimentos de fiscalização</b> e mais de <b>100 representações</b> no MP e órgãos de controle.</p></div></div>
+        <div class="fact rv d2" style="--acento:var(--azul);--acento-soft:var(--azul-soft)"><div class="ico">🏥</div><div><h4>Presença real na saúde</h4><p>Mais de <b>600 fiscalizações</b> no tema saúde, com visitas presenciais a todas as UBSs, UPHs e PAs do município.</p></div></div>
+        <div class="fact rv d3" style="--acento:var(--verde);--acento-soft:var(--verde-soft)"><div class="ico">✊</div><div><h4>Contra privilégios</h4><p>Votou <b>contra o aumento salarial dos vereadores</b>, contra cargos de indicação política e propôs a proibição de nepotismo no Executivo.</p></div></div>
+        <div class="fact rv d4" style="--acento:var(--onca);--acento-soft:var(--onca-soft)"><div class="ico">💻</div><div><h4>Autor do Governo Digital</h4><p>Projeto que informatiza o serviço público: <b>consulta marcada de casa</b> e prontuário eletrônico na saúde.</p></div></div>
       </div>
     </div>
   </div>
@@ -640,18 +724,18 @@
     <span class="eyebrow rv">Propostas para São Paulo</span>
     <h2 class="sec-title rv">A Missão continua.<br>Agora pelo Estado inteiro.</h2>
     <div class="props-grid">
-      <article class="prop rv"><span class="glow"></span><span class="p-tag">01</span><span class="p-ico">🗽</span><h3>Liberdade econômica</h3><p>Ampliar a Lei de Liberdade Econômica: menos burocracia, menos alvará, mais gente empreendendo e gerando emprego em São Paulo.</p></article>
-      <article class="prop rv d1"><span class="glow"></span><span class="p-tag">02</span><span class="p-ico">📱</span><h3>Governo digital na saúde</h3><p>Levar o modelo do Governo Digital para o Estado: consulta marcada pelo celular, prontuário eletrônico e fila transparente.</p></article>
-      <article class="prop rv d2"><span class="glow"></span><span class="p-tag">03</span><span class="p-ico">🔦</span><h3>Fiscalização implacável</h3><p>O método que virou referência em Sorocaba — auditoria de contratos milionários, transparência em licitação e denúncia ao MP — aplicado ao orçamento estadual.</p></article>
-      <article class="prop rv d3"><span class="glow"></span><span class="p-tag">04</span><span class="p-ico">🚀</span><h3>Sandbox &amp; inovação</h3><p>Expandir a Lei do Sandbox: ambiente regulatório para startups e novas tecnologias nascerem e testarem em São Paulo.</p></article>
-      <article class="prop rv d4"><span class="glow"></span><span class="p-tag">05</span><span class="p-ico">🛡️</span><h3>Segurança pública</h3><p>Valorização das polícias, integração de dados e tecnologia no combate ao crime organizado.</p></article>
-      <article class="prop rv d5"><span class="glow"></span><span class="p-tag">06</span><span class="p-ico">🏗️</span><h3>Serviços essenciais</h3><p>Defesa de saúde, trânsito, obras e segurança com a mesma cobrança dura que marcou o mandato na Câmara.</p></article>
+      <article class="prop rv" style="--acento:var(--verde);--acento-soft:var(--verde-soft)"><span class="glow"></span><span class="p-tag">01</span><span class="p-ico">🗽</span><h3>Liberdade econômica</h3><p>Ampliar a Lei de Liberdade Econômica: menos burocracia, menos alvará, mais gente empreendendo e gerando emprego em São Paulo.</p></article>
+      <article class="prop rv d1" style="--acento:var(--onca);--acento-soft:var(--onca-soft)"><span class="glow"></span><span class="p-tag">02</span><span class="p-ico">📱</span><h3>Governo digital na saúde</h3><p>Levar o modelo do Governo Digital para o Estado: consulta marcada pelo celular, prontuário eletrônico e fila transparente.</p></article>
+      <article class="prop rv d2" style="--acento:var(--azul);--acento-soft:var(--azul-soft)"><span class="glow"></span><span class="p-tag">03</span><span class="p-ico">🔦</span><h3>Fiscalização implacável</h3><p>O método que virou referência em Sorocaba — auditoria de contratos milionários, transparência em licitação e denúncia ao MP — aplicado ao orçamento estadual.</p></article>
+      <article class="prop rv d3" style="--acento:var(--verde);--acento-soft:var(--verde-soft)"><span class="glow"></span><span class="p-tag">04</span><span class="p-ico">🚀</span><h3>Sandbox &amp; inovação</h3><p>Expandir a Lei do Sandbox: ambiente regulatório para startups e novas tecnologias nascerem e testarem em São Paulo.</p></article>
+      <article class="prop rv d4" style="--acento:var(--onca);--acento-soft:var(--onca-soft)"><span class="glow"></span><span class="p-tag">05</span><span class="p-ico">🛡️</span><h3>Segurança pública</h3><p>Valorização das polícias, integração de dados e tecnologia no combate ao crime organizado.</p></article>
+      <article class="prop rv d5" style="--acento:var(--azul);--acento-soft:var(--azul-soft)"><span class="glow"></span><span class="p-tag">06</span><span class="p-ico">🏗️</span><h3>Serviços essenciais</h3><p>Defesa de saúde, trânsito, obras e segurança com a mesma cobrança dura que marcou o mandato na Câmara.</p></article>
     </div>
   </div>
 </section>
 
 <!-- ======================= RENAN ======================= -->
-<section class="section renan" id="presidente">
+<section class="section renan claro" id="presidente">
   <div class="wrap">
     <div class="renan-grid">
       <div class="rv">
@@ -679,7 +763,7 @@
         </blockquote>
         <p class="sec-lead rv d2">
           Fundador do MBL e presidente do Partido Missão, Renan Santos teve a candidatura à
-          Presidência da República oficializada em <b style="color:var(--paper)">1º de agosto de 2026</b>,
+          Presidência da República oficializada em <b class="forte">1º de agosto de 2026</b>,
           com o reservista Aroldo Medina como vice. Ítalo Moreira é parte dessa frente em São Paulo.
         </p>
         <div class="rs-facts rv d3">
@@ -780,7 +864,7 @@
 </section>
 
 <!-- ======================= FAÇA PARTE ======================= -->
-<section class="section" id="participe" style="padding-top:60px">
+<section class="section claro" id="participe">
   <div class="wrap">
     <div class="join-grid">
       <div>
@@ -829,11 +913,11 @@
       <div style="max-width:380px">
         <p style="font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--onca);margin-bottom:12px">Navegue</p>
         <p style="display:flex;flex-wrap:wrap;gap:8px 22px;font-size:14.5px">
-          <a href="#mandato" style="color:var(--paper)">Mandato</a>
-          <a href="#propostas" style="color:var(--paper)">Propostas</a>
-          <a href="#presidente" style="color:var(--paper)">Renan Santos</a>
-          <a href="#doar" style="color:var(--paper)">Doar</a>
-          <a href="#participe" style="color:var(--paper)">Participar</a>
+          <a href="#mandato" class="forte">Mandato</a>
+          <a href="#propostas" class="forte">Propostas</a>
+          <a href="#presidente" class="forte">Renan Santos</a>
+          <a href="#doar" class="forte">Doar</a>
+          <a href="#participe" class="forte">Participar</a>
         </p>
       </div>
     </div>
