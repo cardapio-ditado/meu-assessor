@@ -9,15 +9,17 @@
 <meta property="og:title" content="Ítalo Moreira · Deputado Estadual 2026">
 <meta property="og:description" content="O vereador mais produtivo da história de Sorocaba agora em Missão por São Paulo. 7.000+ proposituras, 100+ denúncias ao MP.">
 <meta property="og:url" content="https://italo-moreira-2026.vercel.app/">
-<meta property="og:image" content="https://italo-moreira-2026.vercel.app/assets/og.jpg?v=2">
+<meta property="og:image" content="https://italo-moreira-2026.vercel.app/assets/og.jpg?v=3">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="pt_BR">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Ítalo Moreira · Deputado Estadual 2026">
 <meta name="twitter:description" content="O vereador mais produtivo da história de Sorocaba agora em Missão por São Paulo.">
-<meta name="twitter:image" content="https://italo-moreira-2026.vercel.app/assets/og.jpg?v=2">
+<meta name="twitter:image" content="https://italo-moreira-2026.vercel.app/assets/og.jpg?v=3">
 <meta name="theme-color" content="#0B0A08">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/icone-180.png">
 <style>
   :root{
     --ink:#0B0A08;
@@ -132,6 +134,36 @@
 
   /* ---------- barra de progresso ---------- */
   #progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--verde),var(--onca) 50%,var(--azul));z-index:99;box-shadow:0 0 12px rgba(255,196,0,.55)}
+
+  /* ---------- pelagem da onça: símbolo do partido como textura ---------- */
+  .onca-fundo{position:relative;isolation:isolate}
+  .onca-fundo::after{
+    content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background:url("assets/onca-tile.png") repeat;
+    background-size:260px 260px;
+    opacity:var(--pelo,.5);
+    -webkit-mask-image:radial-gradient(120% 90% at 50% 40%,#000 20%,transparent 78%);
+    mask-image:radial-gradient(120% 90% at 50% 40%,#000 20%,transparent 78%);
+  }
+
+  /* ---------- barra fixa de ação no celular ---------- */
+  .barra-acao{display:none}
+  @media(max-width:720px){
+    .barra-acao{
+      display:flex;gap:10px;position:fixed;left:0;right:0;bottom:0;z-index:96;
+      padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+      background:linear-gradient(180deg,rgba(11,10,8,.72),rgba(11,10,8,.97));
+      backdrop-filter:blur(12px);border-top:1px solid var(--line);
+    }
+    .barra-acao a{
+      flex:1;text-align:center;padding:14px 8px;border-radius:12px;
+      font-weight:800;font-size:15px;letter-spacing:.01em;
+    }
+    .ba-doar{background:linear-gradient(100deg,var(--onca),#FFD84D);color:var(--ink)}
+    .ba-zap{background:var(--verde);color:#fff}
+    body{padding-bottom:78px}
+    .preview-stamp{bottom:86px}
+  }
 
   /* ---------- nav ---------- */
   nav{
@@ -525,6 +557,23 @@
     letter-spacing:.06em;margin-top:20px;display:block;
   }
 
+  /* ---------- espalhe ---------- */
+  .espalhe{max-width:760px;margin:34px auto 0;text-align:center}
+  .espalhe-tit{font-weight:900;text-transform:uppercase;font-size:clamp(22px,2.8vw,32px);letter-spacing:-.01em}
+  .espalhe-sub{color:var(--stone);margin:10px auto 22px;max-width:46ch}
+  .espalhe-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn-zap,.btn-copiar{
+    display:inline-flex;align-items:center;gap:10px;cursor:pointer;
+    font-weight:800;font-size:15.5px;font-family:var(--font-display);
+    padding:15px 26px;border-radius:999px;border:0;
+    transition:transform .2s,box-shadow .2s,background .2s,color .2s;
+  }
+  .btn-zap{background:var(--verde);color:#fff;box-shadow:0 8px 26px rgba(0,155,58,.32)}
+  .btn-zap:hover{transform:translateY(-3px);box-shadow:0 14px 38px rgba(0,155,58,.45)}
+  .btn-copiar{background:transparent;color:var(--paper);border:2px solid rgba(251,248,240,.26)}
+  .btn-copiar:hover{border-color:var(--onca);color:var(--onca);transform:translateY(-3px)}
+  .btn-copiar.ok{background:var(--onca);color:var(--ink);border-color:var(--onca)}
+
   /* ---------- faça parte ---------- */
   .join-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;margin-top:40px}
   @media(max-width:920px){.join-grid{grid-template-columns:1fr}}
@@ -617,6 +666,10 @@
 
 <div id="progress"></div>
 <div class="preview-stamp">Prévia · Proposta</div>
+<div class="barra-acao">
+  <a class="ba-doar" href="#doar">💛 Apoiar</a>
+  <a class="ba-zap" href="https://wa.me/?text=Conhe%C3%A7a%20o%20trabalho%20do%20%C3%8Dtalo%20Moreira%2C%20o%20vereador%20mais%20produtivo%20da%20hist%C3%B3ria%20de%20Sorocaba%2C%20agora%20pr%C3%A9-candidato%20a%20Deputado%20Estadual%20por%20SP%3A%20https%3A%2F%2Fitalo-moreira-2026.vercel.app" target="_blank" rel="noopener">Compartilhar</a>
+</div>
 
 <nav id="nav">
   <div class="logo">ÍTALO <b>MOREIRA</b></div>
@@ -630,7 +683,7 @@
 </nav>
 
 <!-- ======================= HERO ======================= -->
-<header class="hero">
+<header class="hero onca-fundo" style="--pelo:.28">
   <canvas id="dust"></canvas>
   <div class="hero-grid">
     <div>
@@ -652,7 +705,7 @@
     </div>
     <div>
       <div class="photo-frame" id="heroPhoto">
-        <img class="ph-img" src="assets/italo.jpg?v=5" alt="Ítalo Moreira" loading="eager"
+        <img class="ph-img" src="assets/italo.jpg?v=6" alt="Ítalo Moreira" loading="eager"
              onload="this.closest('.photo-frame').classList.add('ready')" onerror="this.remove()">
         <span class="duo"></span>
         <span class="ph-empty">
@@ -731,7 +784,7 @@
 
 <!-- ======================= PROPOSTAS ======================= -->
 <div class="bridge" style="--a:var(--claro);--b:var(--ink)" aria-hidden="true"></div>
-<section class="section" id="propostas" style="background:linear-gradient(180deg,var(--ink),var(--coal))">
+<section class="section onca-fundo" id="propostas" style="background:linear-gradient(180deg,var(--ink),var(--coal));--pelo:.55">
   <div class="wrap">
     <span class="eyebrow rv">Propostas para São Paulo</span>
     <h2 class="sec-title rv">A Missão continua.<br>Agora pelo Estado inteiro.</h2>
@@ -860,7 +913,7 @@
 </section>
 
 <!-- ======================= DOAÇÃO ======================= -->
-<section class="section donate" id="doar">
+<section class="section donate onca-fundo" id="doar" style="--pelo:.4">
   <div class="wrap">
     <span class="eyebrow rv" style="justify-content:center">Vaquinha eleitoral</span>
     <h2 class="sec-title rv">Toda grande Missão<br>começa com apoio</h2>
@@ -873,6 +926,18 @@
       </p>
       <a class="btn btn-solid" href="https://queroapoiar.com.br/italomoreira" target="_blank" rel="noopener">💛 Doar agora</a>
       <a class="donate-url" href="https://queroapoiar.com.br/italomoreira" target="_blank" rel="noopener">queroapoiar.com.br/italomoreira</a>
+    </div>
+
+    <div class="espalhe rv d2">
+      <p class="espalhe-tit">Não pode doar? <span class="hl"><span>Espalhe.</span></span></p>
+      <p class="espalhe-sub">Um voto convencido vale por dez panfletos. Mande esta página para os seus grupos.</p>
+      <div class="espalhe-btns">
+        <a class="btn-zap" href="https://wa.me/?text=Conhe%C3%A7a%20o%20trabalho%20do%20%C3%8Dtalo%20Moreira%2C%20o%20vereador%20mais%20produtivo%20da%20hist%C3%B3ria%20de%20Sorocaba%2C%20agora%20pr%C3%A9-candidato%20a%20Deputado%20Estadual%20por%20SP%3A%20https%3A%2F%2Fitalo-moreira-2026.vercel.app" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.7 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 1 1-4.1 14.9l-.4-.2-2.5.7.7-2.4-.3-.4A8 8 0 0 1 12 4zm4.5 10.2c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.1-.2 0-.4.1-.5l.4-.5c.1-.2.1-.3 0-.5l-.7-1.6c-.2-.4-.4-.4-.5-.4h-.5c-.2 0-.5.1-.7.3-.8.8-1 1.9-.6 3a9.4 9.4 0 0 0 4.4 4.4c1.4.6 2.5.5 3.2-.1.3-.3.5-.7.5-1.1v-.5c0-.1-.1-.2-.3-.3z"/></svg>
+          Enviar no WhatsApp
+        </a>
+        <button class="btn-copiar" id="btnCopiar" type="button">Copiar o link</button>
+      </div>
     </div>
   </div>
 </section>
@@ -1049,6 +1114,47 @@
         var y = Math.min(scrollY, 700);
         heroImg.style.transform = 'scale(1.08) translateY(' + (y * 0.05) + 'px)';
       }, {passive:true});
+    }
+  }
+
+  /* copiar o link da página */
+  var btnC = document.getElementById('btnCopiar');
+  if(btnC){
+    btnC.addEventListener('click', function(){
+      var url = 'https://italo-moreira-2026.vercel.app';
+      var pronto = function(){
+        btnC.textContent = '✓ Link copiado';
+        btnC.classList.add('ok');
+        setTimeout(function(){ btnC.textContent = 'Copiar o link'; btnC.classList.remove('ok'); }, 2400);
+      };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url).then(pronto, pronto);
+      } else {
+        var t = document.createElement('textarea');
+        t.value = url; document.body.appendChild(t); t.select();
+        try{ document.execCommand('copy'); }catch(e){}
+        document.body.removeChild(t); pronto();
+      }
+    });
+  }
+
+  /* retrato do herói com leve profundidade ao mover o mouse */
+  if(!reduced && matchMedia('(hover:hover)').matches){
+    var moldura = document.getElementById('heroPhoto');
+    if(moldura){
+      moldura.style.transition = 'transform .35s cubic-bezier(.2,.7,.2,1)';
+      moldura.addEventListener('mousemove', function(e){
+        var r = moldura.getBoundingClientRect();
+        var x = (e.clientX - r.left)/r.width - .5;
+        var y = (e.clientY - r.top)/r.height - .5;
+        moldura.style.transition = 'transform .08s linear';
+        moldura.style.transform =
+          'perspective(900px) rotateY(' + (x*6).toFixed(2) + 'deg) rotateX(' + (-y*6).toFixed(2) + 'deg) scale(1.015)';
+      });
+      moldura.addEventListener('mouseleave', function(){
+        moldura.style.transition = 'transform .45s cubic-bezier(.2,.7,.2,1)';
+        moldura.style.transform = '';
+      });
     }
   }
 
