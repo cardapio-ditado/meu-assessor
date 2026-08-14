@@ -37,6 +37,23 @@ def fit(txt, alvo, caminho=F, teto=220):
 M = 70
 UTIL = W - M * 2
 
+# --- retrato oficial a direita, fundindo no fundo pela borda esquerda ---
+foto = Image.open("/home/user/italomoreirasp/assets/italo.jpg").convert("RGB")
+fw = 400
+fh = int(fw * 1.25)
+foto = foto.resize((fw, fh), Image.LANCZOS)
+mask = Image.new("L", (fw, fh), 255)
+mpx = mask.load()
+for y in range(fh):
+    for x in range(fw):
+        a = 255
+        if x < 150: a = int(255 * (x / 150) ** 1.6)          # funde a esquerda
+        if y < 90: a = min(a, int(255 * (y / 90) ** 1.4))    # funde o topo
+        if y > fh - 130: a = min(a, int(255 * ((fh - y) / 130)))  # funde embaixo
+        mpx[x, y] = a
+img.paste(foto, (W - fw + 30, H - fh + 55), mask)
+d = ImageDraw.Draw(img, "RGBA")
+
 # --- sobrancelha ---
 f_eb = ImageFont.truetype(FM, 22)
 d.text((M, 64), "DEPUTADO ESTADUAL", font=f_eb, fill=ONCA)
@@ -45,7 +62,7 @@ d.text((M + lg + 18, 64), "· SÃO PAULO · 2026", font=f_eb, fill=STONE)
 d.rectangle([M, 106, M + 62, 110], fill=ONCA)
 
 # --- nome, ocupando a largura util ---
-f1 = fit("ÍTALO MOREIRA", UTIL, teto=160)
+f1 = fit("ÍTALO MOREIRA", 730, teto=160)
 asc, desc = f1.getmetrics()
 d.text((M, 140), "ÍTALO MOREIRA", font=f1, fill=PAPER)
 
@@ -66,7 +83,6 @@ f_l = ImageFont.truetype(FM, 16)
 base_y = 470
 for i, (num, rot) in enumerate([("7.000+", "PROPOSITURAS"),
                                 ("100+", "DENÚNCIAS AO MP"),
-                                ("600+", "NA SAÚDE"),
                                 ("77,8 mil", "SEGUIDORES")]):
     x = M + i * 268
     d.text((x, base_y), num, font=f_n, fill=ONCA)
