@@ -75,7 +75,11 @@
 
   /* ---------- seções claras: o respiro da página ---------- */
   .section.claro{
-    background:var(--claro);color:var(--tinta);
+    background:
+      radial-gradient(900px 460px at 12% 0%,var(--verde-soft),transparent 60%),
+      radial-gradient(820px 480px at 92% 100%,var(--azul-soft),transparent 62%),
+      var(--claro);
+    color:var(--tinta);
     --stone:var(--pedra-clara);
     --line:var(--linha-clara);
     --frame-fade:var(--claro);
@@ -83,13 +87,27 @@
   .section.claro .sec-lead{color:var(--pedra-clara)}
   .section.claro .sec-title{color:var(--tinta)}
   .section.claro .eyebrow{color:var(--verde)}
-  /* costura tricolor entre o escuro e o claro */
-  .section.claro::before,.section.claro::after{
-    content:"";position:absolute;left:0;right:0;height:4px;
-    background:linear-gradient(90deg,var(--verde) 0 33.33%,var(--onca) 33.33% 66.66%,var(--azul) 66.66% 100%);
+  /* ponte em degradê entre seções escuras e claras */
+  .bridge{
+    height:170px;position:relative;overflow:hidden;
+    background:linear-gradient(180deg,var(--a),var(--b));
   }
-  .section.claro::before{top:0}
-  .section.claro::after{bottom:0;opacity:.35}
+  .bridge::before{
+    content:"";position:absolute;left:50%;top:50%;
+    width:min(680px,80vw);height:120px;transform:translate(-50%,-50%);
+    background:
+      radial-gradient(closest-side at 20% 50%,var(--verde-soft),transparent),
+      radial-gradient(closest-side at 50% 50%,rgba(255,196,0,.14),transparent),
+      radial-gradient(closest-side at 80% 50%,var(--azul-soft),transparent);
+    filter:blur(6px);
+  }
+  .bridge::after{
+    content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(320px,50vw);height:2px;border-radius:2px;opacity:.55;
+    background:linear-gradient(90deg,transparent,var(--verde) 25%,var(--onca) 50%,var(--azul) 75%,transparent);
+    animation:brshine 4.5s ease-in-out infinite;
+  }
+  @keyframes brshine{50%{opacity:.95;width:min(430px,62vw)}}
   .sec-title{
     font-weight:900;text-transform:uppercase;letter-spacing:-.02em;
     font-size:clamp(34px,5vw,58px);line-height:1.02;margin:18px 0 14px;
@@ -642,7 +660,7 @@
     </div>
     <div>
       <div class="photo-frame" id="heroPhoto">
-        <img class="ph-img" src="assets/italo.jpg" alt="Ítalo Moreira" loading="eager"
+        <img class="ph-img" src="assets/italo.jpg?v=3" alt="Ítalo Moreira" loading="eager"
              onload="this.closest('.photo-frame').classList.add('ready')" onerror="this.remove()">
         <span class="duo"></span>
         <span class="ph-empty">
@@ -675,6 +693,7 @@
 </div>
 
 <!-- ======================= NÚMEROS ======================= -->
+<div class="bridge" style="--a:var(--ink);--b:var(--claro)" aria-hidden="true"></div>
 <section class="section claro" id="mandato">
   <div class="wrap">
     <span class="eyebrow rv">O mandato em números</span>
@@ -719,6 +738,7 @@
 </section>
 
 <!-- ======================= PROPOSTAS ======================= -->
+<div class="bridge" style="--a:var(--claro);--b:var(--ink)" aria-hidden="true"></div>
 <section class="section" id="propostas" style="background:linear-gradient(180deg,var(--ink),var(--coal))">
   <div class="wrap">
     <span class="eyebrow rv">Propostas para São Paulo</span>
@@ -735,12 +755,13 @@
 </section>
 
 <!-- ======================= RENAN ======================= -->
+<div class="bridge" style="--a:var(--coal);--b:var(--claro)" aria-hidden="true"></div>
 <section class="section renan claro" id="presidente">
   <div class="wrap">
     <div class="renan-grid">
       <div class="rv">
         <div class="photo-frame" style="--pos:50% 18%">
-          <img class="ph-img" src="assets/renan.jpg" alt="Renan Santos" loading="lazy"
+          <img class="ph-img" src="assets/renan.jpg?v=3" alt="Renan Santos" loading="lazy"
                onload="this.closest('.photo-frame').classList.add('ready')" onerror="this.remove()">
           <span class="duo"></span>
           <span class="ph-empty">
@@ -782,6 +803,7 @@
 </section>
 
 <!-- ======================= INSTAGRAM ======================= -->
+<div class="bridge" style="--a:var(--claro);--b:var(--ink)" aria-hidden="true"></div>
 <section class="section insta" id="insta">
   <div class="wrap">
     <div class="insta-grid">
@@ -864,6 +886,7 @@
 </section>
 
 <!-- ======================= FAÇA PARTE ======================= -->
+<div class="bridge" style="--a:var(--ink);--b:var(--claro)" aria-hidden="true"></div>
 <section class="section claro" id="participe">
   <div class="wrap">
     <div class="join-grid">
@@ -897,6 +920,7 @@
 </section>
 
 <!-- ======================= FOOTER ======================= -->
+<div class="bridge" style="--a:var(--claro);--b:var(--coal)" aria-hidden="true"></div>
 <footer>
   <div class="wrap">
     <div class="foot-grid">
