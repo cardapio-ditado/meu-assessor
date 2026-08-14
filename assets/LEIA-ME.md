@@ -1,0 +1,33 @@
+# Fotos da campanha
+
+Coloque os dois arquivos nesta pasta, **exatamente com estes nomes**:
+
+| Arquivo | Quem | Onde aparece |
+|---|---|---|
+| `italo.jpg` | Ítalo Moreira | Foto principal do topo **e** avatar do Instagram |
+| `renan.jpg` | Renan Santos | Seção "Nosso candidato a Presidente" |
+
+Salvou os arquivos? Recarregue o `index.html` — as fotos entram sozinhas.
+Sem os arquivos, a página continua funcionando e mostra as molduras douradas
+de reserva (nada quebra).
+
+## Dicas de enquadramento
+
+- **Vertical funciona melhor** (proporção 4:5, tipo 1200×1500 px).
+- O rosto deve estar no **terço superior** da imagem — o corte é automático
+  e favorece essa área.
+- Marca d'água, logo ou tarja no **rodapé** da foto some sozinha: existe um
+  degradê que apaga a base da imagem.
+- Fundo colorido (laranja, azul, verde) não é problema: a página aplica um
+  tratamento preto-e-amarelo que unifica qualquer foto na identidade do Missão.
+
+## Quer ajustar o corte de uma foto específica?
+
+No `index.html`, na moldura correspondente, mude o valor de `--pos`
+(horizontal e vertical, em %):
+
+```html
+<div class="photo-frame" style="--pos:50% 18%">
+```
+
+Menor o segundo número, mais alto o corte fica na foto.
