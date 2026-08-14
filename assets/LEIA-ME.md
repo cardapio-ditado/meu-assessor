@@ -1,6 +1,11 @@
 # Fotos da campanha
 
-Coloque os dois arquivos nesta pasta, **exatamente com estes nomes**:
+> **Já estão no ar:** `italo.jpg` e `renan.jpg`.
+> A pasta `originais/` guarda os arquivos como foram enviados — a foto do Renan
+> foi recortada a partir dela para remover o logo da CNM e a tarja colorida do
+> rodapé, que não devem aparecer em material de campanha.
+
+Para trocar qualquer foto, basta substituir o arquivo mantendo o nome:
 
 | Arquivo | Quem | Onde aparece |
 |---|---|---|

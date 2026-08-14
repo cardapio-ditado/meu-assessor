@@ -111,7 +111,7 @@
     font-size:clamp(52px,8.5vw,116px);line-height:.92;letter-spacing:-.03em;
     margin:20px 0 8px;
   }
-  .hero h1 .line{display:block;overflow:hidden}
+  .hero h1 .line{display:block;overflow:hidden;padding-top:.1em;margin-top:-.1em}
   .hero h1 .line>span{display:inline-block;transform:translateY(110%);animation:rise .9s cubic-bezier(.2,.75,.2,1) forwards}
   .hero h1 .line:nth-child(2)>span{animation-delay:.12s}
   .hero h1 .line:nth-child(3)>span{animation-delay:.24s}
@@ -487,6 +487,9 @@
     padding:8px 14px;border-radius:6px;opacity:.92;
     box-shadow:0 8px 24px rgba(0,0,0,.4);
   }
+  @media(max-width:640px){
+    .preview-stamp{font-size:8px;letter-spacing:.14em;padding:5px 9px;bottom:10px;right:10px;opacity:.8}
+  }
 
   @media (prefers-reduced-motion: reduce){
     *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
@@ -651,8 +654,8 @@
         <span class="eyebrow rv">Nosso candidato a Presidente</span>
         <h2 class="sec-title rv">Renan <span class="hl"><span>Santos</span></span></h2>
         <blockquote class="rv d1">
-          "O Brasil não precisa de mais do mesmo. Precisa de gente com coragem
-          para cumprir a Missão."
+          Do movimento nas ruas ao partido nas urnas. Em 2026 a Missão disputa
+          o Planalto — e São Paulo é peça-chave nessa virada.
         </blockquote>
         <p class="sec-lead rv d2">
           Fundador do MBL e presidente do Partido Missão, Renan Santos teve a candidatura à
