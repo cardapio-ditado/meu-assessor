@@ -386,6 +386,13 @@
   .ig-post.p2{background:linear-gradient(150deg,#141414,#000);color:#fafafa}
   .ig-post.p3{background:var(--onca);color:#0B0A08}
   .ig-post:hover{opacity:.85}
+  /* post real: entra sozinho quando o arquivo existe em assets/insta */
+  .ig-post img{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    opacity:0;transition:opacity .4s;z-index:1;
+  }
+  .ig-post.has-img img{opacity:1}
+  .ig-post.has-img span{display:none}
   .insta-copy h2{margin-top:18px}
   .insta-copy .btn{margin-top:28px}
 
@@ -709,15 +716,15 @@
               <a class="ig-msg" href="https://instagram.com/italomoreirasp" target="_blank" rel="noopener">Mensagem</a>
             </div>
             <div class="ig-grid">
-              <div class="ig-post p3"><span><em>7.000+</em>proposituras: recorde histórico</span></div>
-              <div class="ig-post p2"><span><em>🔍</em>Fiscalização surpresa na UPH</span></div>
-              <div class="ig-post p1"><span><em>🗳️</em>Candidatura aprovada!</span></div>
-              <div class="ig-post p2"><span><em>🏥</em>Todas as UBSs visitadas</span></div>
-              <div class="ig-post p1"><span><em>📱</em>Governo Digital aprovado</span></div>
-              <div class="ig-post p3"><span><em>100+</em>denúncias ao MP</span></div>
-              <div class="ig-post p1"><span><em>✊</em>Contra o aumento dos vereadores</span></div>
-              <div class="ig-post p3"><span><em>★</em>Com Renan Santos na Missão</span></div>
-              <div class="ig-post p2"><span><em>🙏</em>Obrigado, Sorocaba</span></div>
+              <a class="ig-post p3" href="https://instagram.com/italomoreirasp" target="_blank" rel="noopener"><img src="assets/insta/post-01.jpg" alt="" loading="lazy" onload="this.parentElement.classList.add('has-img')" onerror="this.remove()"><span><em>7.000+</em>proposituras: recorde histórico</span></a>
+              <a class="ig-post p2" href="https://instagram.com/italomoreirasp" target="_blank" rel="noopener"><img src="assets/insta/post-02.jpg" alt="" loading="lazy" onload="this.parentElement.classList.add('has-img')" onerror="this.remove()"><span><em>🔍</em>Fiscalização surpresa na UPH</span></a>
+              <a class="ig-post p1" href="https://instagram.com/italomoreirasp" target="_blank" rel="noopener"><img src="assets/insta/post-03.jpg" alt="" loading="lazy" onload="this.parentElement.classList.add('has-img')" onerror="this.remove()"><span><em>🗳️</em>Candidatura aprovada!</span></a>
+              <a class="ig-post p2" href="https://instagram.com/italomoreirasp" target="_blank" rel="noopener"><img src="assets/insta/post-04.jpg" alt="" loading="lazy" onload="this.parentElement.classList.add('has-img')" onerror="this.remove()"><span><em>🏥</em>Todas as UBSs visitadas</span></a>
+              <a class="ig-post p1" href="https://instagram.com/italomoreirasp" target="_blank" rel="noopener"><img src="assets/insta/post-05.jpg" alt="" loading="lazy" onload="this.parentElement.classList.add('has-img')" onerror="this.remove()"><span><em>📱</em>Governo Digital aprovado</span></a>
+              <a class="ig-post p3" href="https://instagram.com/italomoreirasp" target="_blank" rel="noopener"><img src="assets/insta/post-06.jpg" alt="" loading="lazy" onload="this.parentElement.classList.add('has-img')" onerror="this.remove()"><span><em>100+</em>denúncias ao MP</span></a>
+              <a class="ig-post p1" href="https://instagram.com/italomoreirasp" target="_blank" rel="noopener"><img src="assets/insta/post-07.jpg" alt="" loading="lazy" onload="this.parentElement.classList.add('has-img')" onerror="this.remove()"><span><em>✊</em>Contra o aumento dos vereadores</span></a>
+              <a class="ig-post p3" href="https://instagram.com/italomoreirasp" target="_blank" rel="noopener"><img src="assets/insta/post-08.jpg" alt="" loading="lazy" onload="this.parentElement.classList.add('has-img')" onerror="this.remove()"><span><em>★</em>Com Renan Santos na Missão</span></a>
+              <a class="ig-post p2" href="https://instagram.com/italomoreirasp" target="_blank" rel="noopener"><img src="assets/insta/post-09.jpg" alt="" loading="lazy" onload="this.parentElement.classList.add('has-img')" onerror="this.remove()"><span><em>🙏</em>Obrigado, Sorocaba</span></a>
             </div>
           </div>
         </div>

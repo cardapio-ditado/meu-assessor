@@ -7,6 +7,16 @@ Coloque os dois arquivos nesta pasta, **exatamente com estes nomes**:
 | `italo.jpg` | Ítalo Moreira | Foto principal do topo **e** avatar do Instagram |
 | `renan.jpg` | Renan Santos | Seção "Nosso candidato a Presidente" |
 
+E, opcionalmente, os posts do feed em `assets/insta/`:
+
+| Arquivos | Onde aparece |
+|---|---|
+| `post-01.jpg` … `post-09.jpg` | Grade 3×3 do celular na seção Instagram |
+
+Cada post que existir substitui o card de texto correspondente e continua
+clicando para o perfil. Pode subir só alguns — os que faltarem seguem como
+card tipográfico. O melhor formato é vertical (360×640, print do próprio feed).
+
 Salvou os arquivos? Recarregue o `index.html` — as fotos entram sozinhas.
 Sem os arquivos, a página continua funcionando e mostra as molduras douradas
 de reserva (nada quebra).
