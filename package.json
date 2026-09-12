@@ -1,0 +1,36 @@
+{
+  "name": "meu-assessor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Memoria documental consultavel da gestao municipal, com respostas rapidas e rastreaveis. Piloto: Varzea Grande / MT.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "workers/*"
+  ],
+  "scripts": {
+    "db:migrate": "node --experimental-strip-types scripts/migrate.ts",
+    "db:seed": "node --experimental-strip-types scripts/seed.ts",
+    "ingest": "node --experimental-strip-types workers/ingestion/src/run.ts",
+    "api": "node --experimental-strip-types services/api/src/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --experimental-strip-types 'tests/**/*.test.ts'",
+    "test:unit": "node --test --experimental-strip-types 'tests/unit/*.test.ts'",
+    "test:integration": "node --test --experimental-strip-types 'tests/integration/*.test.ts'",
+    "test:security": "node --test --experimental-strip-types 'tests/security/*.test.ts'",
+    "test:evaluation": "node --test --experimental-strip-types 'tests/evaluation/*.test.ts'",
+    "verify": "npm run typecheck && npm run test"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.6",
+    "@types/pg": "^8.15.5",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "pg": "8.16.3"
+  }
+}

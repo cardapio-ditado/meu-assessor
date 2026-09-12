@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Meu Assessor</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<a class="skip" href="#conteudo">Ir para o conteudo</a>
+
+<header class="topo">
+  <div class="marca">
+    <span class="marca-nome">Meu Assessor</span>
+    <span class="marca-mun" id="municipio">carregando...</span>
+  </div>
+  <button type="button" id="sair" class="link" hidden>Sair</button>
+</header>
+
+<main id="conteudo">
+
+  <!-- T01 / 7.2 - Acesso -->
+  <section id="tela-acesso" class="tela">
+    <h1>Entrar</h1>
+    <form id="form-acesso" novalidate>
+      <label for="login">Usuario</label>
+      <input id="login" name="login" autocomplete="username" required>
+      <label for="senha">Senha</label>
+      <input id="senha" name="senha" type="password" autocomplete="current-password" required>
+      <!-- 17.3: segredo nunca no frontend, nem como valor padrao de campo,
+           nem em ambiente de demonstracao. -->
+      <p class="ajuda">Ambiente de demonstracao com dados ficticios. As credenciais
+        do piloto sao fornecidas por quem opera o ambiente.</p>
+      <button type="submit" class="primario">Entrar</button>
+      <p id="erro-acesso" class="erro" role="alert" hidden></p>
+    </form>
+  </section>
+
+  <!-- 7.3 - Inicio -->
+  <section id="tela-inicio" class="tela" hidden>
+    <p class="saudacao" id="saudacao"></p>
+
+    <form id="form-pergunta" class="pergunta">
+      <label for="pergunta">O que voce precisa saber?</label>
+      <div class="linha-pergunta">
+        <input id="pergunta" name="pergunta" autocomplete="off"
+               placeholder="Ex.: como esta a quadra do bairro Exemplo?">
+        <button type="button" id="gravar" class="microfone" aria-pressed="false">
+          <span aria-hidden="true">&#9679;</span>
+          <span class="rotulo-botao">Gravar</span>
+        </button>
+      </div>
+      <button type="submit" class="primario">Perguntar</button>
+      <p id="estado-voz" class="ajuda" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="aviso-cobertura" id="aviso-cobertura"></p>
+
+    <h2>Principais assuntos dos ultimos dias</h2>
+    <div id="cartoes" class="cartoes" aria-live="polite"></div>
+
+    <details class="cobertura">
+      <summary>Fontes e ultima verificacao</summary>
+      <div id="cobertura"></div>
+    </details>
+  </section>
+
+  <!-- 7.4 - Pergunta e resposta -->
+  <section id="tela-resposta" class="tela" hidden>
+    <button type="button" id="voltar" class="link">&#8592; Voltar</button>
+    <p class="pergunta-eco" id="pergunta-eco"></p>
+
+    <div id="estado-consulta" class="estado" role="status" aria-live="polite"></div>
+
+    <article id="resposta" hidden>
+      <div class="selo-linha">
+        <span class="selo" id="selo-status"></span>
+        <span class="selo secundario" id="selo-periodo"></span>
+        <span class="selo secundario" id="selo-dados"></span>
+      </div>
+
+      <!-- Camada 1 -->
+      <h1 class="camada1" id="camada-breve"></h1>
+
+      <!-- Escolha de entidade (T02) -->
+      <div id="escolhas" class="escolhas" hidden>
+        <h2>Qual delas?</h2>
+        <div id="lista-escolhas"></div>
+      </div>
+
+      <!-- Camada 2 -->
+      <section id="bloco-entenda" hidden>
+        <h2>Entenda</h2>
+        <dl id="camada-entenda" class="fatos"></dl>
+      </section>
+
+      <div id="bloco-divergencias" class="caixa atencao" hidden>
+        <h2>Ha uma divergencia</h2>
+        <ul id="divergencias"></ul>
+      </div>
+
+      <div id="bloco-lacunas" class="caixa" hidden>
+        <h2>O que ainda nao foi confirmado</h2>
+        <ul id="lacunas"></ul>
+      </div>
+
+      <!-- Camada 3 -->
+      <section id="bloco-historico" hidden>
+        <h2>Historico e relacoes</h2>
+        <ol id="camada-historico" class="linha-tempo"></ol>
+      </section>
+
+      <!-- Camada 4 -->
+      <section id="bloco-comprove" hidden>
+        <h2>Comprove</h2>
+        <div id="camada-comprove"></div>
+      </section>
+
+      <div id="bloco-ressalvas" class="caixa discreta" hidden>
+        <h2>Ressalvas</h2>
+        <ul id="ressalvas"></ul>
+      </div>
+
+      <div id="bloco-validador" class="caixa discreta" hidden>
+        <h2>Verificacao</h2>
+        <p id="validador-texto"></p>
+      </div>
+
+      <form id="form-erro" class="feedback">
+        <label for="nota-erro">Ha um erro nesta resposta?</label>
+        <input id="nota-erro" name="nota" placeholder="Descreva o que esta incorreto">
+        <button type="submit" class="secundario">Enviar para revisao</button>
+        <p id="erro-enviado" class="ajuda" role="status"></p>
+      </form>
+    </article>
+  </section>
+</main>
+
+<nav class="barra" id="barra" hidden>
+  <button type="button" data-tela="tela-inicio" class="ativo">Inicio</button>
+  <button type="button" data-tela="perguntar">Perguntar</button>
+</nav>
+
+<footer class="pe">
+  <p id="rodape-aviso"></p>
+</footer>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>
