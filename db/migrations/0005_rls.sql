@@ -9,7 +9,11 @@
 -- Por isso: (1) FORCE ROW LEVEL SECURITY, que faz a politica valer tambem para
 -- o dono da tabela; (2) o papel de aplicacao e criado NOBYPASSRLS; (3) os
 -- testes em tests/security/ provam o isolamento em vez de assumi-lo.
-set search_path to ma, public;
+-- `extensions` no caminho porque em Postgres gerenciado (Supabase) as
+-- extensoes vivem nesse schema: sem ele, gen_random_uuid() e digest() nao
+-- resolvem. Um schema inexistente no search_path e ignorado, entao a linha
+-- e inofensiva em Postgres proprio.
+set search_path to ma, public, extensions;
 
 -- Tabelas com tenant_id: politica de organizacao + classe de acesso.
 do $$

@@ -25,10 +25,29 @@ export function getPool(): pg.Pool {
   if (connectionString === undefined || connectionString === '') {
     throw new Error('DATABASE_URL nao definida');
   }
+  /**
+   * Em execucao serverless cada instancia abre seu proprio pool, e centenas de
+   * instancias esgotariam as conexoes do banco. Por isso: no maximo uma
+   * conexao por instancia, tempo de ocio curto, e a URL apontando para o
+   * pooler em modo transacao do provedor.
+   *
+   * `withContext` roda tudo dentro de uma transacao explicita com
+   * set_config(..., is_local => true), que e exatamente o que o modo transacao
+   * suporta — o contexto morre com a transacao e nao vaza para a proxima
+   * requisicao que reusar a conexao do pooler.
+   */
+  const serverless = process.env['VERCEL'] === '1' || process.env['MA_SERVERLESS'] === '1';
   pool = new pg.Pool({
     connectionString,
-    max: Number(process.env['DATABASE_POOL_MAX'] ?? 10),
+    max: serverless ? 1 : Number(process.env['DATABASE_POOL_MAX'] ?? 10),
+    idleTimeoutMillis: serverless ? 10_000 : 30_000,
+    connectionTimeoutMillis: 10_000,
     application_name: 'meu-assessor',
+    // O pooler do provedor termina TLS por conta propria e nem sempre
+    // apresenta cadeia verificavel pelo cliente; a conexao continua cifrada.
+    ...(process.env['DATABASE_SSL_NO_VERIFY'] === '1'
+      ? { ssl: { rejectUnauthorized: false } }
+      : {}),
   });
   return pool;
 }
@@ -73,13 +92,38 @@ export async function withContext<T>(
 
 /**
  * Caminho sem contexto de organizacao: usado apenas pela autenticacao, pela
- * operacao da plataforma e pelas migracoes. Toda chamada e auditada por quem
- * a usa; nao ha leitura de conteudo de cliente por aqui.
+ * operacao da plataforma e pelas migracoes. Sob RLS, este caminho NAO le
+ * conteudo de cliente — ha um teste que verifica exatamente isso.
  */
 export async function withoutTenant<T>(fn: (runner: QueryRunner) => Promise<T>): Promise<T> {
   const client = await getPool().connect();
   try {
     return await fn(client);
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Caminho de autenticacao. Grava apenas `ma.login` e nenhuma organizacao, o
+ * que habilita as politicas `auth_path_*` da migracao 0006: a transacao le
+ * exclusivamente as concessoes daquele login. Nao existe papel privilegiado
+ * nem funcao SECURITY DEFINER envolvida.
+ */
+export async function withLogin<T>(
+  login: string,
+  fn: (runner: QueryRunner) => Promise<T>,
+): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query('begin');
+    await client.query('select set_config($1, $2, true)', ['ma.login', login]);
+    const result = await fn(client);
+    await client.query('commit');
+    return result;
+  } catch (error) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
   } finally {
     client.release();
   }

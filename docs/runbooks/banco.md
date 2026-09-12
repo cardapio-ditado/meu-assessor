@@ -74,3 +74,83 @@ Nao executado nesta entrega. §23.3 exige que uma restauracao real seja executad
 e medida **antes** de qualquer SLA comercial. O procedimento deve terminar
 verificando que dossies, fontes, vinculos e permissoes continuam consistentes
 (T48), nao apenas que o `pg_restore` terminou sem erro.
+
+
+## Postgres gerenciado (Supabase e equivalentes)
+
+O esquema roda sem excecao de privilegio: nenhuma funcao `SECURITY DEFINER`,
+nenhum papel com `BYPASSRLS`. Isso foi uma reescrita deliberada (D13), porque o
+papel administrativo de um Postgres gerenciado nao e superusuario e nao pode
+conceder `BYPASSRLS`.
+
+Ordem de implantacao:
+
+1. **Criar o papel da aplicacao**, explicitamente sem privilegio de bypass:
+
+   ```sql
+   create role meu_assessor_app login nobypassrls nosuperuser nocreatedb nocreaterole;
+   ```
+
+2. **Aplicar as migracoes** `0001` a `0006` na ordem. Em banco compartilhado com
+   outro produto, confira antes que o schema `ma` nao exista.
+
+3. **Conceder o minimo** e nada fora do schema `ma`:
+
+   ```sql
+   grant usage on schema ma, extensions to meu_assessor_app;
+   grant select, insert, update, delete on all tables in schema ma to meu_assessor_app;
+   grant usage, select on all sequences in schema ma to meu_assessor_app;
+   grant execute on all functions in schema ma to meu_assessor_app;
+   alter default privileges in schema ma
+     grant select, insert, update, delete on tables to meu_assessor_app;
+   revoke create on schema ma from meu_assessor_app;
+   ```
+
+   Sem `create`: DDL e so por migracao.
+
+4. **Definir a senha do papel** (nunca no repositorio, nunca em conversa):
+
+   ```sql
+   alter role meu_assessor_app password 'valor-gerado-no-cofre';
+   ```
+
+5. **Verificar o isolamento assumindo o papel**, nao como administrador:
+
+   ```sql
+   set role meu_assessor_app;
+   select count(*) from ma.claims;              -- deve ser 0 sem contexto
+   select rolbypassrls from pg_roles where rolname = current_user;  -- deve ser false
+   ```
+
+   Qualquer resultado diferente e incidente de configuracao, nao detalhe.
+
+## Conexao em execucao serverless
+
+Use a string do **pooler em modo transacao** do provedor, nao a conexao direta:
+centenas de instancias frias esgotariam as conexoes do banco. O `pool.ts`
+detecta o ambiente (`VERCEL` ou `MA_SERVERLESS`) e limita a uma conexao por
+instancia.
+
+`withContext` roda tudo dentro de uma transacao explicita com
+`set_config(..., is_local => true)`, que e exatamente o que o modo transacao
+suporta: o contexto morre com a transacao e nao vaza para a proxima requisicao
+que reusar a conexao do pooler.
+
+## Banco compartilhado com outro produto
+
+Se o banco hospeda outro sistema no schema `public`:
+
+- as extensoes vao para `extensions` quando esse schema existe (D17);
+- o controle de migracoes vive em `ma.schema_migrations` (D18);
+- o papel da aplicacao nao recebe privilegio de tabela fora de `ma`. Confirme:
+
+  ```sql
+  set role meu_assessor_app;
+  select c.relname, has_table_privilege(current_user, c.oid, 'select')
+    from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public' and c.relkind = 'r';
+  ```
+
+  Todas as linhas devem trazer `false`. `USAGE` no schema costuma aparecer como
+  concedido porque o provedor concede ao pseudo-papel `PUBLIC`; isso **nao**
+  concede leitura de tabela, e revogar de `PUBLIC` afetaria o outro produto.

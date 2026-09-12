@@ -70,3 +70,46 @@ caminho de "nome contido na pergunta", e o teto de pontuacao da busca textual
 (0.85) deixava um nome exato a apenas 0.10 de distancia, abaixo da margem de
 0.15. Correcao: caminho `name_contained` e teto textual reduzido para 0.75.
 Teste: `tests/evaluation/anexo-d.test.ts`, T02 e T08.
+
+## Decisoes de implantacao
+
+| # | Decisao | Estado | Motivo |
+|---|---|---|---|
+| D13 | Caminho de autenticacao por politica de RLS, nao por funcao `SECURITY DEFINER` com `BYPASSRLS` | verificado | A primeira versao funcionava em Postgres proprio e **nao** funciona em Postgres gerenciado: no Supabase o papel `postgres` nao e superusuario e nao pode conceder `BYPASSRLS` (verificado no projeto, nao suposto). A politica `auth_path_own_grants` resolve sem privilegio nenhum e deixa o esquema portavel. Sete testes novos provam o comportamento |
+| D14 | Sessao em `ma.sessions` com cookie assinado, nao `Map` em memoria | verificado | Em execucao serverless nao existe processo longo: cada requisicao pode cair em outra instancia. O cookie carrega identificador opaco assinado com `SESSION_SECRET`; expiracao e revogacao vivem no banco, onde podem ser retiradas de verdade |
+| D15 | Etapa de build com `tsc`, em vez de `--experimental-strip-types` na plataforma | verificado | `rewriteRelativeImportExtensions` reescreve os especificadores `.ts` para `.js` na emissao, produzindo ESM que a plataforma executa sem depender de flag experimental. `npm run verify` inclui o build |
+| D16 | `extensions` no `search_path` de toda migracao | verificado | Em Postgres gerenciado as extensoes vivem nesse schema; sem ele `gen_random_uuid()` nao resolve. Um schema inexistente no `search_path` e ignorado, logo a linha e inofensiva em Postgres proprio |
+| D17 | Extensoes instaladas no schema `extensions` quando ele existe | executado | O banco de implantacao e **compartilhado com outro produto** no schema `public`. Instalar extensoes la poluiria o schema do vizinho |
+| D18 | Controle de migracoes em `ma.schema_migrations`, nao `public.schema_migrations` | executado | Mesmo motivo: em banco compartilhado, o controle colidiria com o do outro sistema |
+| D19 | Ambiente de implantacao **sem** dado sintetico | executado | O 1.2 admite dado ficticio "somente em demonstracao e testes". Consequencia correta e esperada: a aplicacao abre com feed vazio e o aviso de que nenhum conector esta em operacao |
+| D20 | `Secure` no cookie decidido pela conexao, nao por flag | verificado | Um flag pode ficar esquecido ligado em producao ou desligado em desenvolvimento. A decisao vem de `x-forwarded-proto` ou do host |
+
+### DF06 — o caminho dos estaticos quebrava fora de `dist`
+
+`webRoot` era calculado com uma profundidade fixa de diretorios
+(`../../../apps/web`). Compilado para `dist/services/api/src`, isso aponta para
+`dist/apps/web`, que nao existe: a aplicacao respondia 404 na raiz. Agora a
+funcao sobe a arvore ate encontrar `apps/web/index.html`.
+
+Encontrado ao rodar o build pela primeira vez, nao por leitura do codigo.
+
+### Verificacao de isolamento no banco de implantacao
+
+Executada no proprio projeto, **assumindo o papel da aplicacao** (`set role`),
+nao como administrador:
+
+| Verificacao | Resultado |
+|---|---|
+| `rolbypassrls` do papel da aplicacao | `false` |
+| Tabelas com RLS forcado no schema `ma` | 24 |
+| Funcoes `SECURITY DEFINER` no schema `ma` | 0 |
+| Linhas visiveis sem contexto de organizacao | 0 em claims, documentos, fontes e concessoes |
+| Caminho de autenticacao (`ma.login` sozinho) | 3 concessoes do proprio login, 0 de conteudo |
+| Com contexto de organizacao | 9 fontes, 10 conjuntos, 0 habilitadas |
+| Pode criar objeto no schema `ma` | nao |
+| Pode ler tabela do outro produto no schema `public` | nao, em nenhuma das 30 tabelas |
+
+O papel tem `USAGE` no schema `public` porque o Supabase concede isso ao
+pseudo-papel `PUBLIC`. `USAGE` de schema nao concede leitura de tabela, e a
+checagem tabela por tabela confirmou `select = false` em todas. Revogar de
+`PUBLIC` tiraria o acesso do outro produto tambem, e nao foi feito.

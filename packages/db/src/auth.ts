@@ -6,7 +6,7 @@
  */
 import type { AccessClass } from '../../domain/src/states.ts';
 import type { AuthorizedContext, Role } from '../../domain/src/types.ts';
-import { withoutTenant } from './pool.ts';
+import { withLogin } from './pool.ts';
 
 export class AuthorizationError extends Error {}
 
@@ -28,15 +28,24 @@ interface GrantRow {
  * organizacoes").
  */
 export async function resolveContexts(login: string): Promise<AuthorizedContext[]> {
-  // O papel da aplicacao NAO le ma.user_grants diretamente: a tabela tem RLS
-  // por organizacao e, no momento do login, ainda nao existe organizacao. A
-  // leitura passa pela unica funcao SECURITY DEFINER do sistema (migracao
-  // 0006), que recebe um login e devolve somente os grants daquele login.
-  const rows = await withoutTenant(async (db) => {
+  // A tabela de concessoes tem RLS por organizacao e, no momento do login,
+  // ainda nao existe organizacao. `withLogin` grava `ma.login` e nada mais, o
+  // que habilita a politica `auth_path_own_grants` da migracao 0006: esta
+  // transacao le exclusivamente as concessoes deste login. Sem papel
+  // privilegiado e sem SECURITY DEFINER — o esquema roda em Postgres
+  // gerenciado sem excecao de privilegio.
+  const rows = await withLogin(login, async (db) => {
     const result = await db.query<GrantRow>(
-      `select user_id, display_name, tenant_id, tenant_slug, role,
-              access_classes, municipality_id, municipality_name, time_zone
-         from ma.resolve_login_grants($1)`,
+      `select u.id as user_id, u.display_name,
+              t.id as tenant_id, t.slug as tenant_slug,
+              g.role, g.access_classes::text[] as access_classes,
+              m.id as municipality_id, m.name as municipality_name, m.time_zone
+         from ma.users u
+         join ma.user_grants g on g.user_id = u.id and g.revoked_at is null
+         join ma.tenants t on t.id = g.tenant_id
+         join ma.tenant_municipalities tm on tm.tenant_id = t.id
+         join ma.municipalities m on m.id = tm.municipality_id
+        where u.login = $1 and u.disabled_at is null`,
       [login],
     );
     return result.rows;

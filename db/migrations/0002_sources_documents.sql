@@ -1,6 +1,10 @@
 -- 0002_sources_documents.sql
 -- Fontes, documentos, versoes e evidencias. Briefing 8.4, A.2, A.3, 12.1.
-set search_path to ma, public;
+-- `extensions` no caminho porque em Postgres gerenciado (Supabase) as
+-- extensoes vivem nesse schema: sem ele, gen_random_uuid() e digest() nao
+-- resolvem. Um schema inexistente no search_path e ignorado, entao a linha
+-- e inofensiva em Postgres proprio.
+set search_path to ma, public, extensions;
 
 -- Ficha obrigatoria de cada fonte (8.4). Uma fonte pode ter varios conjuntos
 -- de dados com cadencias diferentes, por isso source_datasets.

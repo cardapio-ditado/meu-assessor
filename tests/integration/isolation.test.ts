@@ -12,7 +12,7 @@
  */
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { closePool, withContext, withoutTenant } from '../../packages/db/src/pool.ts';
+import { closePool, withContext, withLogin, withoutTenant } from '../../packages/db/src/pool.ts';
 import { contextFor } from '../../packages/db/src/auth.ts';
 import { getEntity, getEvidence } from '../../packages/db/src/repository.ts';
 import { searchEntities } from '../../packages/retrieval/src/search.ts';
@@ -190,5 +190,118 @@ describe('isolamento entre organizacoes', { skip }, () => {
         db.query(`delete from ma.localities where id = $1`, [criado]),
       );
     }
+  });
+});
+
+/**
+ * O caminho de autenticacao da migracao 0006 substituiu uma funcao
+ * SECURITY DEFINER com BYPASSRLS por uma politica de RLS. Essa troca precisa
+ * ser provada, nao assumida: a politica vale apenas sem organizacao no
+ * contexto e devolve exclusivamente as concessoes do login autenticado.
+ */
+describe('caminho de autenticacao sem privilegio', { skip }, () => {
+  before(async () => {
+    gabinete = await contextFor('gestor.demo', 'demonstracao');
+    vizinho = await contextFor('gestor.vizinho', 'demonstracao-vizinha');
+  });
+
+  after(async () => {
+    await closePool();
+  });
+
+  test('nao existe funcao SECURITY DEFINER no esquema', async () => {
+    const n = await withoutTenant(async (db) => {
+      const r = await db.query<{ n: string }>(
+        `select count(*)::text as n
+           from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = 'ma' and p.prosecdef`,
+      );
+      return r.rows[0]?.n;
+    });
+    assert.equal(n, '0', 'uma funcao definer reintroduz excecao de privilegio');
+  });
+
+  test('nenhum papel do produto tem BYPASSRLS', async () => {
+    const rows = await withoutTenant(async (db) => {
+      const r = await db.query<{ rolname: string; rolbypassrls: boolean }>(
+        `select rolname, rolbypassrls from pg_roles where rolname like 'meu_assessor%'`,
+      );
+      return r.rows;
+    });
+    assert.ok(rows.length > 0);
+    for (const row of rows) {
+      assert.equal(row.rolbypassrls, false, `${row.rolname} tem BYPASSRLS`);
+    }
+  });
+
+  test('o login resolve apenas as proprias concessoes', async () => {
+    const proprias = await withLogin('gestor.demo', async (db) => {
+      const r = await db.query<{ n: string }>(`select count(*)::text as n from ma.user_grants`);
+      return Number(r.rows[0]?.n ?? '0');
+    });
+    // gestor.demo tem exatamente um grant (manager na organizacao de demonstracao).
+    assert.equal(proprias, 1);
+
+    // O curador tem grant na MESMA organizacao. Ainda assim nao aparece para
+    // o login do gestor: a politica filtra por usuario, nao por organizacao.
+    const doCurador = await withLogin('curador.demo', async (db) => {
+      const r = await db.query<{ role: string }>(`select role from ma.user_grants`);
+      return r.rows.map((x) => x.role);
+    });
+    assert.deepEqual(doCurador, ['data_curator']);
+  });
+
+  test('sem ma.login definido, o caminho nao devolve concessao nenhuma', async () => {
+    const n = await withoutTenant(async (db) => {
+      const r = await db.query<{ n: string }>(`select count(*)::text as n from ma.user_grants`);
+      return r.rows[0]?.n;
+    });
+    assert.equal(n, '0');
+  });
+
+  test('login inexistente nao devolve concessao, e nao se distingue de sem acesso', async () => {
+    const n = await withLogin('nao.existe', async (db) => {
+      const r = await db.query<{ n: string }>(`select count(*)::text as n from ma.user_grants`);
+      return r.rows[0]?.n;
+    });
+    assert.equal(n, '0');
+    await assert.rejects(() => contextFor('nao.existe', 'demonstracao'), /acesso nao disponivel/);
+    // A mesma mensagem para usuario existente sem acesso aquela organizacao.
+    await assert.rejects(() => contextFor('gestor.demo', 'demonstracao-vizinha'), /acesso nao disponivel/);
+  });
+
+  test('a politica de autenticacao NAO abre conteudo: so concessoes', async () => {
+    const counts = await withLogin('gestor.demo', async (db) => {
+      const r = await db.query<{ claims: string; docs: string; evidence: string; entities: string }>(
+        `select (select count(*) from ma.claims)::text as claims,
+                (select count(*) from ma.document_versions)::text as docs,
+                (select count(*) from ma.evidence)::text as evidence,
+                (select count(*) from ma.entities)::text as entities`,
+      );
+      return r.rows[0];
+    });
+    assert.equal(counts?.claims, '0');
+    assert.equal(counts?.docs, '0');
+    assert.equal(counts?.evidence, '0');
+    assert.equal(counts?.entities, '0');
+  });
+
+  test('com organizacao no contexto, a politica de autenticacao fica inerte', async () => {
+    // Mesmo gravando ma.login junto, o ramo auth_path exige tenant nulo. Uma
+    // sessao de organizacao nao ganha leitura ampliada de concessoes.
+    const visiveis = await withContext(gabinete, async (db) => {
+      await db.query('select set_config($1, $2, true)', ['ma.login', 'curador.demo']);
+      const r = await db.query<{ n: string }>(`select count(*)::text as n from ma.user_grants`);
+      return Number(r.rows[0]?.n ?? '0');
+    });
+    // Ve as concessoes da propria organizacao (gestor + curador = 2), nunca as
+    // da organizacao vizinha.
+    assert.equal(visiveis, 2);
+
+    const doVizinho = await withContext(vizinho, async (db) => {
+      const r = await db.query<{ n: string }>(`select count(*)::text as n from ma.user_grants`);
+      return Number(r.rows[0]?.n ?? '0');
+    });
+    assert.equal(doVizinho, 1);
   });
 });

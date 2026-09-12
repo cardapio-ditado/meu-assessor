@@ -32,8 +32,12 @@ try {
     await client.query('drop schema if exists ma cascade');
   }
 
+  // O controle vive no schema do proprio produto. Em um banco compartilhado
+  // com outro sistema, criar `public.schema_migrations` poluiria o schema do
+  // vizinho e colidiria com o controle dele.
+  await client.query('create schema if not exists ma');
   await client.query(`
-    create table if not exists public.schema_migrations (
+    create table if not exists ma.schema_migrations (
       filename text primary key,
       content_hash text not null,
       applied_at timestamptz not null default now()
@@ -43,7 +47,7 @@ try {
   const files = (await readdir(migrationsDir)).filter((f) => f.endsWith('.sql')).sort();
   const applied = new Map<string, string>(
     (await client.query<{ filename: string; content_hash: string }>(
-      'select filename, content_hash from public.schema_migrations',
+      'select filename, content_hash from ma.schema_migrations',
     )).rows.map((r) => [r.filename, r.content_hash]),
   );
 
@@ -67,7 +71,7 @@ try {
     try {
       await client.query(sql);
       await client.query(
-        'insert into public.schema_migrations (filename, content_hash) values ($1, $2)',
+        'insert into ma.schema_migrations (filename, content_hash) values ($1, $2)',
         [file, hash],
       );
       await client.query('commit');

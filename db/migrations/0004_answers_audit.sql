@@ -1,6 +1,10 @@
 -- 0004_answers_audit.sql
 -- Consultas, respostas, cache, revisao e auditoria. Briefing 10.2, 12.5, 16.3, 21.2.
-set search_path to ma, public;
+-- `extensions` no caminho porque em Postgres gerenciado (Supabase) as
+-- extensoes vivem nesse schema: sem ele, gen_random_uuid() e digest() nao
+-- resolvem. Um schema inexistente no search_path e ignorado, entao a linha
+-- e inofensiva em Postgres proprio.
+set search_path to ma, public, extensions;
 
 -- Trilha da resposta (12.5): "A trilha de auditoria precisa mostrar o que foi
 -- dito, com quais fontes e quando houve retificacao."

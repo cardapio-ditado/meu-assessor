@@ -1,0 +1,10 @@
+# Nada de dados reais, credenciais ou material de demonstracao no deploy.
+fixtures/
+tests/
+docs/
+db/
+prompts/
+scripts/demo.ts
+.env
+.env.*
+!.env.example

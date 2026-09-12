@@ -1,6 +1,10 @@
 -- 0003_entities_claims.sql
 -- Entidades, afirmacoes, relacoes e eventos financeiros. Briefing 10.2, A.3-A.5.
-set search_path to ma, public;
+-- `extensions` no caminho porque em Postgres gerenciado (Supabase) as
+-- extensoes vivem nesse schema: sem ele, gen_random_uuid() e digest() nao
+-- resolvem. Um schema inexistente no search_path e ignorado, entao a linha
+-- e inofensiva em Postgres proprio.
+set search_path to ma, public, extensions;
 
 create table ma.entities (
   id uuid primary key default gen_random_uuid(),

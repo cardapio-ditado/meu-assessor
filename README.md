@@ -24,7 +24,8 @@ evidência de execução. O quadro abaixo é literal.
 
 | Item | Estado | Evidência |
 |---|---|---|
-| Esquema de banco, migrações, RLS | **executado** | 6 migrações aplicadas em PostgreSQL 16; 24 tabelas com RLS forçado |
+| Esquema de banco, migrações, RLS | **executado** | 6 migrações; 24 tabelas com RLS forçado, verificado em PostgreSQL 16 local e 17 gerenciado |
+| Portabilidade para Postgres gerenciado | **verificado** | nenhuma função `SECURITY DEFINER`, nenhum papel com `BYPASSRLS`; isolamento conferido assumindo o papel da aplicação |
 | Isolamento entre organizações | **verificado** | 9 testes de integração contra o banco real |
 | Cadeia vertical (documento → fato → consulta → resposta com referência → atualização) | **executado** | `scripts/demo.ts` sobre recorte sintético |
 | Motor financeiro determinístico | **verificado** | 22 testes unitários, incluindo o exemplo do §11.5 |
@@ -105,7 +106,7 @@ psql -d meu_assessor -c 'create extension pgcrypto; create extension pg_trgm; cr
 
 npm run db:migrate            # 0001..0006; cada arquivo em uma transação
 npm run db:seed -- --reset    # recorte sintético
-npm run verify                # typecheck + 87 testes
+npm run verify                # typecheck + build + 94 testes
 DEMO_PASSWORD='escolha-uma' npm run api   # http://localhost:8787
 ```
 
@@ -122,6 +123,35 @@ npm run db:seed -- --reset && node --experimental-strip-types scripts/demo.ts
 
 A migração `0006` cria um papel (`meu_assessor_authn`) e precisa ser aplicada
 por um superusuário; as demais rodam com o papel da aplicação.
+
+---
+
+## Implantacao
+
+O produto roda em dois formatos com o **mesmo** codigo de roteamento:
+
+- **local**: `npm run api` abre porta e delega para `handle()`;
+- **serverless**: `api/index.js` reexporta o mesmo `handle()` a partir de `dist/`.
+
+Tres coisas mudaram para que isso fosse verdade, e cada uma foi um defeito real
+antes de ser corrigida (ver `docs/decisions/`):
+
+1. **Nenhum papel privilegiado no banco.** O caminho de autenticacao usava uma
+   funcao `SECURITY DEFINER` de dona com `BYPASSRLS`. Isso funciona em Postgres
+   proprio e nao funciona em Postgres gerenciado — verificado, nao suposto: o
+   papel administrativo do Supabase nao e superusuario. Hoje o caminho e uma
+   politica de RLS que nao exige privilegio nenhum, e o esquema e portavel.
+2. **Sessao no banco, cookie assinado.** Um `Map` em memoria perde a sessao na
+   requisicao seguinte quando cada uma cai em outra instancia.
+3. **Etapa de build.** `tsc` emite ESM com os especificadores `.ts` reescritos
+   para `.js`, em vez de depender de flag experimental na plataforma.
+
+O procedimento completo, as variaveis de ambiente e **o que ainda falta para a
+palavra "producao" ser honesta** estao em `docs/runbooks/implantacao.md`.
+
+Nenhuma variavel tem valor padrao no codigo: sem `DATABASE_URL`,
+`SESSION_SECRET` e `DEMO_PASSWORD`, a aplicacao recusa login em vez de
+funcionar com segredo embutido (§17.3).
 
 ---
 
@@ -196,17 +226,18 @@ com as duas datas.
 ```
 npm run test:unit          39 testes  moeda, datas, finanças, cadeia
 npm run test:security      11 testes  injeção em documento, SSRF, credenciais
-npm run test:integration   18 testes  RLS, isolamento, ingestão idempotente
+npm run test:integration   25 testes  RLS, isolamento, autenticação, ingestão
 npm run test:evaluation    19 testes  Anexo D sobre o recorte sintético
                            ---------
-                           87 testes
+                           94 testes
 ```
 
-Três defeitos reais foram encontrados **pelos próprios testes** durante a
-construção e estão documentados em `docs/decisions/`: a devolução que era
+Quatro defeitos reais foram encontrados **pelos próprios testes e pelo primeiro
+build**, e estão documentados em `docs/decisions/`: a devolução que era
 subtraída de todas as etapas financeiras, o endereço IPv6 literal que
-contornava a guarda de SSRF, e a invalidação de cache que só cobria a versão
-imediatamente anterior de um documento.
+contornava a guarda de SSRF, a invalidação de cache que só cobria a versão
+imediatamente anterior de um documento, e o caminho dos estáticos que apontava
+para fora da árvore compilada.
 
 `docs/acceptance/anexo-d.md` lista os 48 casos do Anexo D com o que está
 aprovado, o que está **não executado** e por quê. Casos não executados não

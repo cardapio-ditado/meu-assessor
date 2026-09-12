@@ -4,12 +4,31 @@
 -- criado NOBYPASSRLS (ver docs/runbooks/banco.md): ativar RLS sem isso nao
 -- isola nada (F17).
 
-create extension if not exists pgcrypto;
-create extension if not exists pg_trgm;
-create extension if not exists unaccent;
+-- Extensoes vao para o schema `extensions` quando ele existe (Postgres
+-- gerenciado), e para `public` quando nao existe (Postgres proprio). Sem essa
+-- escolha explicita, um banco compartilhado com outro produto receberia as
+-- extensoes no schema dele.
+do $$
+declare
+  target text := case
+    when exists (select 1 from pg_namespace where nspname = 'extensions') then 'extensions'
+    else 'public'
+  end;
+  ext text;
+begin
+  foreach ext in array array['pgcrypto', 'pg_trgm', 'unaccent'] loop
+    if not exists (select 1 from pg_extension where extname = ext) then
+      execute format('create extension %I schema %I', ext, target);
+    end if;
+  end loop;
+end $$;
 
 create schema if not exists ma;
-set search_path to ma, public;
+-- `extensions` no caminho porque em Postgres gerenciado (Supabase) as
+-- extensoes vivem nesse schema: sem ele, gen_random_uuid() e digest() nao
+-- resolvem. Um schema inexistente no search_path e ignorado, entao a linha
+-- e inofensiva em Postgres proprio.
+set search_path to ma, public, extensions;
 
 -- Contexto da requisicao. Definido pelo servidor a cada transacao a partir da
 -- sessao autenticada; NUNCA a partir de um campo enviado pelo navegador (B.2).
