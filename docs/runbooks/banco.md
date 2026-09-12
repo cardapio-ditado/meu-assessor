@@ -83,7 +83,14 @@ nenhum papel com `BYPASSRLS`. Isso foi uma reescrita deliberada (D13), porque o
 papel administrativo de um Postgres gerenciado nao e superusuario e nao pode
 conceder `BYPASSRLS`.
 
-Ordem de implantacao:
+**Use `db/bootstrap/`**: os arquivos la fazem exatamente os passos abaixo, sao
+idempotentes e terminam com dois arquivos de verificacao que falham visivelmente
+se algo estiver fora do lugar. O `03-provision.sql` e **gerado** a partir do
+catalogo de fontes (`scripts/gen-provision.ts`), para que a situacao de
+integracao nao divirja entre codigo e SQL — e o gerador se recusa a rodar se
+alguma fonte estiver marcada como conector verificado.
+
+Ordem de implantacao (a mesma de `db/bootstrap/README.md`):
 
 1. **Criar o papel da aplicacao**, explicitamente sem privilegio de bypass:
 

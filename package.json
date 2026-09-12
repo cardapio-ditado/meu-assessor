@@ -25,7 +25,8 @@
     "test:evaluation": "node --test --experimental-strip-types 'tests/evaluation/*.test.ts'",
     "verify": "npm run typecheck && npm run build && npm run test",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/services/api/src/server.js"
+    "start": "node dist/services/api/src/server.js",
+    "gen:provision": "node --experimental-strip-types scripts/gen-provision.ts > db/bootstrap/03-provision.sql"
   },
   "devDependencies": {
     "@types/node": "22.18.6",
