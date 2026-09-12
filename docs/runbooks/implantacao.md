@@ -95,6 +95,29 @@ update ma.sessions set revoked_at = now() where user_login = '<login>';
 Cache com conteudo restrito nao pode sobreviver a retirada de permissao
 (§16.3, T34): ver `docs/runbooks/incidente.md`.
 
+## A autenticacao atual nao serve para producao
+
+`DEMO_PASSWORD` e **uma senha compartilhada por todos os usuarios**. Isso e
+suficiente para uma demonstracao fechada e nao atende o §7.2, que pede "senha
+com recuperacao segura ou autenticacao gerenciada equivalente" e "autenticacao
+adicional" para administradores.
+
+O que falta, concretamente:
+
+- senha por usuario, com hash (Argon2 ou bcrypt) em `ma.users`;
+- fluxo de recuperacao que nao revele a existencia da conta;
+- segundo fator para os papeis `municipal_admin` e `platform_ops`;
+- bloqueio por tentativas e registro das falhas em `ma.audit_log`.
+
+O esquema ja acomoda isso sem migracao de dados: `ma.users` recebe as colunas de
+credencial e `ma.sessions` ja distingue expiracao de revogacao.
+
+Enquanto isso nao existir, trate a URL como **link privado**: qualquer pessoa
+com o endereco chega a tela de login, e a unica barreira e a senha unica.
+Verifique tambem a protecao de implantacao da plataforma — neste projeto ela
+esta **desativada** (sem senha, sem SSO, sem IP confiavel), entao nao existe
+camada antes da aplicacao.
+
 ## O que falta para ser producao
 
 Esta lista existe para que ninguem chame de producao o que ainda nao e (§28.2).
@@ -110,6 +133,9 @@ Esta lista existe para que ninguem chame de producao o que ainda nao e (§28.2).
 | Avaliacao de acessibilidade WCAG 2.2 AA (R14, P0) | produto |
 | Metas de latencia medidas no cenario declarado (§16.1) | engenharia |
 | Banco dedicado: hoje compartilha projeto com outro produto | decisao do proprietario |
+| Autenticacao por usuario com recuperacao e segundo fator (§7.2) | engenharia |
+| Protecao de implantacao na plataforma, hoje desativada | proprietario do projeto |
+| Projeto de hospedagem dedicado: hoje o deploy e preview de um projeto de outro produto | proprietario do projeto |
 
 Enquanto essa lista tiver itens, o ambiente e de implantacao e demonstracao
 tecnica — nao de uso com dado real de cidadao.
