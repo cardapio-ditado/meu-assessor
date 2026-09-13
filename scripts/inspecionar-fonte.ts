@@ -176,7 +176,11 @@ function diagnosticoPdf(buf: Buffer): string[] {
   const bruto = buf.toString('latin1');
   const conta = (padrao: string): number => bruto.split(padrao).length - 1;
 
-  linhas.push(`paginas (/Type /Page): ${conta('/Type /Page') + conta('/Type/Page')}`);
+  // `/Type /Pages` (o no da arvore) contem `/Type /Page` como prefixo, entao a
+  // contagem crua sai um a mais. A coleta real da edicao 539 mostrou 23 paginas
+  // onde este diagnostico dizia 24; quem manda e a contagem do leitor de PDF.
+  const paginas = conta('/Type /Page') + conta('/Type/Page') - conta('/Type /Pages') - conta('/Type/Pages');
+  linhas.push(`paginas (/Type /Page, aproximado): ${paginas}`);
   linhas.push('');
   linhas.push('marcas de TEXTO (quanto mais, melhor para extracao nativa):');
   for (const m of ['/Font', '/FontFile', '/FontFile2', '/FontFile3', '/ToUnicode']) {
