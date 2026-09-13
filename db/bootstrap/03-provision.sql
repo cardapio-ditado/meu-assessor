@@ -59,7 +59,7 @@ select t.id, x.code, x.official_name, x.domain, x.organ, x.sphere, x.record_type
       ('F05', 'Jornal Oficial AMM-MT', 'amm.diariomunicipal.org', 'Associacao Mato-grossense dos Municipios', 'association', array['official_act']::text[], 'document', false, array['nao presumir que substitui todo o diario proprio do municipio (8.2)']::text[], 'access_probed'),
       ('F06', 'PNCP - Portal Nacional de Contratacoes Publicas', 'pncp.gov.br', 'Governo Federal', 'federal', array['procurement','contract']::text[], 'api', false, array['recorte e historico a verificar; endpoints devem sair da documentacao oficial, nao de suposicao']::text[], 'access_probed'),
       ('F07', 'Portal da Transparencia - API de dados (CGU)', 'api.portaldatransparencia.gov.br', 'Controladoria-Geral da Uniao', 'federal', array['amendment','financial_event']::text[], 'api', true, array['uso da API exige cadastro e token','limites de requisicao a confirmar']::text[], 'access_probed'),
-      ('F10', 'Transferegov.br - APIs de dados abertos', 'api-publica.transferegov.gestao.gov.br', 'Ministerio da Gestao e da Inovacao em Servicos Publicos', 'federal', array['transfer_instrument','financial_event']::text[], 'api', false, array['modulos, filtros e modelos a validar']::text[], 'access_probed'),
+      ('F10', 'Transferegov.br - APIs de dados abertos', 'api-publica.transferegov.gestao.gov.br', 'Ministerio da Gestao e da Inovacao em Servicos Publicos', 'federal', array['transfer_instrument','financial_event']::text[], 'api', false, array['a API tem quatro modulos (downloads, especiais, fundoafundo, parcerias); so `especiais` tem conector','convenios e contratos de repasse sao distribuidos como CSV em /downloads, nao por API','os filtros recebem o valor cru; sintaxe de operador do PostgREST devolve 200 com lista vazia','a fonte nao publica data de publicacao do plano de acao, so a data de aceite']::text[], 'access_probed'),
       ('F24', 'Geo-obras Cidadao / TCE-MT', 'geoobras.tce.mt.gov.br', 'Tribunal de Contas do Estado de Mato Grosso', 'state', array['public_work']::text[], 'html', false, array['sem API, exportacao ou coleta automatizada confirmada']::text[], 'blocked')
   ) as x(code, official_name, domain, organ, sphere, record_types, access_method,
          requires_credentials, known_limitations, integration_status)
@@ -82,7 +82,7 @@ select s.tenant_id, s.id, d.name, d.record_type, d.cadence, d.stale_after_hours
     ('F05', 'publicacoes-vg', 'official_act', 'duas janelas diarias', 36),
     ('F06', 'contratos', 'contract', 'duas janelas diarias', 36),
     ('F07', 'emendas', 'amendment', 'duas janelas diarias', 36),
-    ('F10', 'instrumentos', 'transfer_instrument', 'semanal', 240),
+    ('F10', 'planos-acao-especiais', 'transfer_instrument', 'semanal', 240),
     ('F24', 'obras', 'public_work', 'semanal', 240)
   ) as d(code, name, record_type, cadence, stale_after_hours) on d.code = s.code
 on conflict (source_id, name) do update set cadence = excluded.cadence;
