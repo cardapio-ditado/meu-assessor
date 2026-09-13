@@ -245,10 +245,21 @@ if (process.argv.includes('--pdf')) {
 }
 
 if (process.argv.includes('--links')) {
-  const encontrados = links(corpo, resposta.finalUrl);
+  const todos = links(corpo, resposta.finalUrl);
+  // O filtro vale tambem para links: a listagem do Diario Oficial tem
+  // centenas de enderecos, e o que interessa e um recorte. Sem ele, a
+  // informacao existe e nao da para ler.
+  const filtro = arg('--filtro') ?? null;
+  const encontrados =
+    filtro === null ? todos : todos.filter((l) => l.toLowerCase().includes(filtro.toLowerCase()));
   process.stdout.write(
-    `## Links (${encontrados.length})\n\n\`\`\`\n${encontrados.join('\n')}\n\`\`\`\n`,
+    `## Links: ${encontrados.length} de ${todos.length}` +
+      `${filtro === null ? '' : ` (filtro "${filtro}")`}\n\n`,
   );
+  // Amostra, nao lista inteira: a contagem responde "quanto", e um punhado de
+  // exemplos responde "de que forma". Despejar centenas nao responde nenhuma.
+  const amostra = encontrados.length > 40 ? [...encontrados.slice(0, 20), '...', ...encontrados.slice(-20)] : encontrados;
+  process.stdout.write(`\`\`\`\n${amostra.join('\n')}\n\`\`\`\n`);
   process.exit(0);
 }
 
