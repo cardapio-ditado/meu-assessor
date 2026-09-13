@@ -164,7 +164,7 @@ async function serveStatic(pathname: string): Promise<Json> {
   }
 }
 
-async function route(req: IncomingMessage, url: URL): Promise<Json> {
+async function route(req: IncomingMessage, url: URL, requestId: string): Promise<Json> {
   const method = req.method ?? 'GET';
   const path = url.pathname;
 
@@ -180,24 +180,38 @@ async function route(req: IncomingMessage, url: URL): Promise<Json> {
     // 17.3: nenhum segredo no codigo. Sem DEMO_PASSWORD e SESSION_SECRET
     // definidas, o acesso simplesmente nao funciona.
     const expected = process.env['DEMO_PASSWORD'] ?? '';
-    // 7.2: "Nao revelar a existencia de contas em mensagens de erro."
-    const generic = json(401, { error: 'acesso nao disponivel para estas credenciais' });
-    if (expected === '') {
-      console.error('DEMO_PASSWORD nao definida: nenhum acesso sera concedido.');
-      return generic;
-    }
+    /**
+     * 7.2: "Nao revelar a existencia de contas em mensagens de erro." O cliente
+     * recebe SEMPRE esta mesma resposta, qualquer que seja a causa.
+     *
+     * Isso obriga o cliente a nao saber; nao obriga o SERVIDOR a esquecer. Sem
+     * a linha de log abaixo, "senha incorreta", "login sem concessoes" e "banco
+     * inacessivel" ficam indistinguiveis para quem opera, e o unico caminho de
+     * diagnostico e ir ler o log do banco procurando uma conexao no mesmo
+     * segundo — feito uma vez na implantacao, e caro toda vez.
+     *
+     * O motivo vai para o log com o mesmo identificador que o cliente recebe em
+     * `x-request-id`, entao quem relata o erro e quem investiga falam da mesma
+     * tentativa. O login NAO acompanha: quem digita a senha no campo de usuario
+     * a entregaria ao log, e 23.1 pede o identificador sem dado pessoal
+     * desnecessario.
+     */
+    const recusa = (motivo: string): Json => {
+      console.error(`[${requestId}] POST /v1/sessions recusado: ${motivo}`);
+      return json(401, { error: 'acesso nao disponivel para estas credenciais' });
+    };
+    if (expected === '') return recusa('DEMO_PASSWORD nao definida');
     if (!sessions.hasSecret()) {
-      console.error('SESSION_SECRET ausente ou curta: nenhuma sessao pode ser assinada.');
-      return generic;
+      return recusa('SESSION_SECRET ausente ou com menos de 32 caracteres');
     }
-    if (!constantTimeEquals(password, expected)) return generic;
+    if (!constantTimeEquals(password, expected)) return recusa('senha incorreta');
     let contexts;
     try {
       contexts = await resolveContexts(login);
-    } catch {
-      return generic;
+    } catch (error) {
+      return recusa(`falha ao resolver concessoes: ${(error as Error).message}`);
     }
-    if (contexts.length === 0) return generic;
+    if (contexts.length === 0) return recusa('login sem concessoes ativas');
     const chosen =
       typeof body.tenantSlug === 'string'
         ? contexts.find((c) => c.tenantSlug === body.tenantSlug)
@@ -477,7 +491,7 @@ export async function handle(req: IncomingMessage, res: ServerResponse): Promise
   const url = new URL(req.url ?? '/', `http://${host}`);
   const requestId = randomUUID();
   try {
-    send(res, await route(req, url), requestId);
+    send(res, await route(req, url, requestId), requestId);
   } catch (error) {
     // 23.1: cada resposta tem identificador para diagnostico, sem guardar
     // dados pessoais desnecessarios no log.
