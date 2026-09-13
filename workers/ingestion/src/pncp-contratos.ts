@@ -201,10 +201,43 @@ async function promover(
       limit 1`,
     [context.tenantId, c.numeroControlePNCP],
   );
-  const evidenciaId = evidencia.rows[0]?.id;
-  // Sem evidencia nao existe afirmacao: o 12.1 exige trecho ancorado, e uma
-  // afirmacao sem origem e exatamente o que o produto promete nao fazer.
-  if (evidenciaId === undefined) return 'sem_evidencia';
+  let evidenciaId = evidencia.rows[0]?.id;
+
+  /**
+   * O pipeline grava o documento; a EVIDENCIA e deste conector.
+   *
+   * E o lugar certo: o 12.1 pede trecho ancorado, e so quem leu a fonte sabe o
+   * que ancora o que. O localizador nomeia o registro e a operacao que o
+   * devolveu, e os parametros de consulta vao junto — sem credencial, que aqui
+   * nem existe.
+   */
+  if (evidenciaId === undefined) {
+    const documento = await db.query<{ id: string; text_content: string | null }>(
+      `select id, text_content from ma.document_versions
+        where tenant_id = $1 and external_id = $2
+        order by record_version desc limit 1`,
+      [context.tenantId, c.numeroControlePNCP],
+    );
+    const doc = documento.rows[0];
+    // Sem documento nao ha o que ancorar, e afirmacao sem origem e exatamente o
+    // que o produto promete nao fazer.
+    if (doc === undefined) return 'sem_evidencia';
+
+    const trecho = (doc.text_content ?? textoDoContrato(c)).slice(0, 1500);
+    const nova = await db.query<{ id: string }>(
+      `insert into ma.evidence (tenant_id, document_version_id, locator, snippet, query_parameters)
+       values ($1,$2,$3,$4,$5::jsonb) returning id`,
+      [
+        context.tenantId,
+        doc.id,
+        `registro ${c.numeroControlePNCP} em GET /v1/contratos do PNCP`,
+        trecho,
+        JSON.stringify({ dataInicial: de, dataFinal: ate, cnpjOrgao: c.orgaoCnpj }),
+      ],
+    );
+    evidenciaId = nova.rows[0]?.id;
+    if (evidenciaId === undefined) return 'sem_evidencia';
+  }
 
   const nome = tituloDoContrato(c);
   const existente = await db.query<{ id: string }>(
@@ -353,3 +386,20 @@ console.log(
 );
 
 await closePool();
+
+/**
+ * Contrato recebido que nao virou afirmacao e coleta FALHADA, nao parcial.
+ *
+ * A primeira execucao real trouxe 28 documentos e produziu zero afirmacoes — e
+ * terminou verde, porque so os documentos contavam. Um lote que chega ao banco
+ * sem virar conteudo consultavel parece sucesso no painel e deixa a tela vazia,
+ * que e o caso mais caro de todos: ninguem vai investigar uma execucao
+ * bem-sucedida.
+ */
+if (resultado.semEvidencia > 0) {
+  console.error(
+    `\n${resultado.semEvidencia} de ${contratos.length} contrato(s) nao viraram afirmacao. ` +
+      'A coleta gravou documento sem produzir conteudo consultavel; isso e falha, nao resultado parcial.',
+  );
+  process.exit(1);
+}
