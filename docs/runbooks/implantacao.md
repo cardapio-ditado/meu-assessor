@@ -142,7 +142,7 @@ Esta lista existe para que ninguem chame de producao o que ainda nao e (§28.2).
 
 | Pendencia | Quem resolve |
 |---|---|
-| Etapa E1: acesso real as fontes, ainda bloqueado | responsavel pelo ambiente de rede |
+| Conector por fonte, com amostra reproduzivel (F.1); a E1 provou alcance em 2026-09-13, nao integracao | engenharia |
 | Extracao de PDF do diario oficial | engenharia, apos amostra real |
 | Agendador persistente com duas execucoes reais registradas (R11, P0) | infraestrutura |
 | Parecer juridico: LGPD, LAI, enquadramento de contratacao | juridico e encarregado |

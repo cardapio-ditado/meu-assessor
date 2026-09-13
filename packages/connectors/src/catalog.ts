@@ -63,7 +63,19 @@ const WEEKLY = { cadence: 'semanal', staleAfterHours: 24 * 10 } as const;
  * Todos os hosts abaixo retornaram 403 no CONNECT do proxy de egresso do
  * ambiente: o bloqueio e do ambiente, nao dos portais.
  */
-const ENV_BLOCKED = 'tentativa em 2026-09-12: bloqueada pela politica de rede do ambiente (CONNECT 403), nao pelo portal';
+/**
+ * Resultado da sondagem de 2026-09-13, rodada pelo workflow "Prova de acesso as
+ * fontes (E1)" (execucao 34757007445) num runner com saida de rede publica. Os
+ * controles neutros responderam 200 na mesma execucao, entao o desfecho e
+ * atribuivel a fonte e nao ao ambiente.
+ *
+ * A tentativa anterior, de 2026-09-12, media outra coisa: o ambiente de
+ * execucao negava CONNECT para qualquer host fora de uma allowlist estreita, e
+ * `example.com` falhava igual aos portais. Fica registrada porque distingue
+ * "nao sabemos" de "o portal nao responde" — e porque foi o que motivou os
+ * controles neutros na sondagem.
+ */
+const REACHED = 'sondagem em 2026-09-13 (E1): respondeu 200; alcance comprovado, conector NAO verificado';
 
 export const SOURCE_CATALOG: readonly SourceSpec[] = [
   {
@@ -78,7 +90,7 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     accessMethod: 'html',
     requiresCredentials: false,
     integrationStatus: 'access_probed',
-    probe: ENV_BLOCKED,
+    probe: REACHED,
     knownLimitations: [
       'cobertura historica do arquivo de noticias nao medida',
       'noticia oficial nao substitui registro administrativo (8.1)',
@@ -97,7 +109,7 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     accessMethod: 'html',
     requiresCredentials: false,
     integrationStatus: 'access_probed',
-    probe: ENV_BLOCKED,
+    probe: REACHED,
     knownLimitations: [
       'e um indice: cada destino exige teste individual',
       'CNPJ 03.507.548/0001-10 e o ente principal, nao a familia completa de fundos e autarquias (8.2)',
@@ -119,7 +131,7 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     accessMethod: 'html',
     requiresCredentials: false,
     integrationStatus: 'access_probed',
-    probe: ENV_BLOCKED,
+    probe: REACHED,
     knownLimitations: ['escopo, paginacao e acesso estruturado nao validados'],
     datasets: [{ name: 'emendas', recordType: 'amendment', ...DAILY }],
   },
@@ -135,7 +147,7 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     accessMethod: 'document',
     requiresCredentials: false,
     integrationStatus: 'access_probed',
-    probe: ENV_BLOCKED,
+    probe: REACHED,
     knownLimitations: [
       'arquivo historico e qualidade dos documentos nao medidos',
       'edicoes antigas podem exigir OCR, que e ultimo recurso (13.2)',
@@ -154,7 +166,7 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     accessMethod: 'document',
     requiresCredentials: false,
     integrationStatus: 'access_probed',
-    probe: ENV_BLOCKED,
+    probe: REACHED,
     knownLimitations: ['nao presumir que substitui todo o diario proprio do municipio (8.2)'],
     datasets: [{ name: 'publicacoes-vg', recordType: 'official_act', ...DAILY }],
   },
@@ -171,7 +183,7 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     accessMethod: 'api',
     requiresCredentials: false,
     integrationStatus: 'access_probed',
-    probe: ENV_BLOCKED,
+    probe: REACHED,
     knownLimitations: [
       'recorte e historico a verificar; endpoints devem sair da documentacao oficial, nao de suposicao',
     ],
@@ -190,7 +202,7 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     accessMethod: 'api',
     requiresCredentials: true,
     integrationStatus: 'access_probed',
-    probe: `${ENV_BLOCKED}; alem disso a API exige cadastro e token conforme a documentacao (F07)`,
+    probe: `${REACHED}; a pagina de documentacao respondeu, mas a API exige cadastro e token, entao o acesso aos DADOS continua nao demonstrado (F07)`,
     knownLimitations: ['uso da API exige cadastro e token', 'limites de requisicao a confirmar'],
     datasets: [{ name: 'emendas', recordType: 'amendment', ...DAILY }],
   },
@@ -206,7 +218,7 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     accessMethod: 'api',
     requiresCredentials: false,
     integrationStatus: 'access_probed',
-    probe: ENV_BLOCKED,
+    probe: REACHED,
     knownLimitations: ['modulos, filtros e modelos a validar'],
     datasets: [{ name: 'instrumentos', recordType: 'transfer_instrument', ...WEEKLY }],
   },
@@ -227,7 +239,10 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     integrationStatus: 'blocked',
     probe:
       'briefing F24: tentativa de acesso ao caminho indicado pela prefeitura retornou rejeicao; ' +
-      `nesta sessao, ${ENV_BLOCKED}. Nenhuma API, exportacao ou coleta automatizada confirmada.`,
+      'sondagem em 2026-09-13 (E1): nao respondeu em 25 s, enquanto as outras oito fontes e os ' +
+      'controles neutros responderam 200 na mesma execucao. Uma falha isolada nao separa ' +
+      'indisponibilidade momentanea de bloqueio por origem; somada a rejeicao ja registrada no ' +
+      'briefing, mantem-se `blocked`. Nenhuma API, exportacao ou coleta automatizada confirmada.',
     knownLimitations: ['sem API, exportacao ou coleta automatizada confirmada'],
     datasets: [{ name: 'obras', recordType: 'public_work', ...WEEKLY }],
   },

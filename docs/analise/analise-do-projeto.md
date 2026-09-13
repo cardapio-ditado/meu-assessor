@@ -233,11 +233,15 @@ está bem; para replicação, é o gargalo.
 O briefing é bom e a especificação é executável. O núcleo difícil — separar
 etapas financeiras, não confundir tipos de vínculo, preservar dois eixos de
 tempo, isolar organizações, recusar responder sem evidência — está implementado
-e testado, com 87 testes e três defeitos reais corrigidos no caminho.
+e testado, com 96 testes e seis defeitos reais corrigidos no caminho.
 
-O que falta não é principalmente código. É **acesso**: às fontes, a uma amostra
-real do diário oficial, e a um parecer jurídico. Enquanto o acesso não existir, o
-honesto é dizer que existe uma base sólida e uma etapa E1 não cumprida — e não
+O que falta não é principalmente código. É **acesso**. A etapa E1 saiu do lugar
+em 2026-09-13: oito das nove fontes responderam, sondadas de uma rede pública com
+o cliente de coleta do produto (`docs/sources/prova-de-acesso.md`). Isso é
+alcance comprovado, não integração — continuam faltando o recorte histórico de
+cada fonte, o conector com amostra reproduzível, uma amostra real do diário
+oficial e o parecer jurídico. Enquanto isso não existir, o
+honesto é dizer que existe uma base sólida e nenhuma fonte integrada — e não
 apresentar a demonstração sintética como prova de cobertura.
 
 A frase que deveria governar a próxima etapa é a do §28.3: construa primeiro um
