@@ -32,7 +32,7 @@ import {
   urlContratos,
   type ContratoPncp,
 } from '../../../packages/connectors/src/pncp.ts';
-import { ingestBatch, type RawRecord } from './pipeline.ts';
+import { fieldCoverage, ingestBatch, type RawRecord } from './pipeline.ts';
 
 const PARSER_VERSION = 'pncp-contratos/1.0.0';
 const CODIGO_FONTE = 'F06';
@@ -349,15 +349,63 @@ const { contratos, totalDeclarado, urls } = await buscarContratos(cnpj);
 console.log(`${contratos.length} contrato(s) recebido(s); a fonte declarou ${totalDeclarado}.`);
 
 const resultado = await withContext(context, async (db) => {
+  const registros = contratos.map((c, i) =>
+    paraRegistro(c, urls[Math.min(i, urls.length - 1)] ?? urls[0] ?? ''),
+  );
   const outcome = await ingestBatch(db, context, {
     sourceCode: CODIGO_FONTE,
     datasetName: CONJUNTO,
     requestedFrom: de,
     requestedTo: ate,
-    records: contratos.map((c, i) => paraRegistro(c, urls[Math.min(i, urls.length - 1)] ?? urls[0] ?? '')),
+    records: registros,
     parserVersion: PARSER_VERSION,
     expectedCount: totalDeclarado,
   });
+
+  /**
+   * Matriz de cobertura (9.3): intervalo PEDIDO ao lado do intervalo
+   * ENCONTRADO.
+   *
+   * E o que transforma tela vazia em resposta. Sem isto, uma janela sem
+   * contrato nenhum e indistinguivel de coleta que nunca rodou — e o produto
+   * fica em silencio justamente onde deveria dizer "o provedor nao publicou
+   * nada neste periodo, e a ultima publicacao foi em tal data".
+   */
+  const publicadas = registros
+    .map((r) => r.publicationDate)
+    .filter((d): d is string => d !== null)
+    .sort();
+  await db.query(
+    `insert into ma.coverage_matrix
+       (tenant_id, dataset_id, requested_from, requested_to, found_from, found_to,
+        temporal_coverage, record_count, failure_count, field_coverage, last_verified_at, verified_by)
+     select $1, sd.id, $2, $3, $4, $5, $6, $7, 0, $8::jsonb, now(), $9
+       from ma.source_datasets sd
+       join ma.sources s on s.id = sd.source_id
+      where s.code = $10 and sd.name = $11
+     on conflict (dataset_id, requested_from, requested_to) do update
+       set found_from = excluded.found_from,
+           found_to = excluded.found_to,
+           temporal_coverage = excluded.temporal_coverage,
+           record_count = excluded.record_count,
+           field_coverage = excluded.field_coverage,
+           last_verified_at = excluded.last_verified_at`,
+    [
+      context.tenantId,
+      de,
+      ate,
+      publicadas[0] ?? null,
+      publicadas[publicadas.length - 1] ?? null,
+      // Nao ha como afirmar "completo conforme o provedor" sem verificar o que
+      // ele deveria ter; o que se pode afirmar e o que veio.
+      contratos.length === 0 ? 'unavailable' : 'partial',
+      contratos.length,
+      JSON.stringify(fieldCoverage(registros)),
+      PARSER_VERSION,
+      CODIGO_FONTE,
+      CONJUNTO,
+    ],
+  );
 
   let criadas = 0;
   let atualizadas = 0;
