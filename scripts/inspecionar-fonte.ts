@@ -125,7 +125,39 @@ function endpoints(doc: Record<string, unknown>): string[] {
   return linhas;
 }
 
+/**
+ * Links de uma pagina HTML, sem repeticao.
+ *
+ * Um indice de API ou de portal diz onde estao os recursos, e e isso que se
+ * procura antes de escrever conector. Imprimir o HTML cru nao serve: uma pagina
+ * de documentacao costuma ter um favicon embutido em base64 que sozinho ocupa
+ * todo o recorte — foi o que aconteceu na primeira inspecao do Transferegov.
+ */
+function links(html: string, base: string): string[] {
+  const achados = new Set<string>();
+  for (const m of html.matchAll(/(?:href|src)\s*=\s*["']([^"']+)["']/gi)) {
+    const bruto = m[1];
+    if (bruto === undefined) continue;
+    // `data:` e ancora nao levam a lugar nenhum.
+    if (bruto.startsWith('data:') || bruto.startsWith('#') || bruto.startsWith('javascript:')) continue;
+    try {
+      achados.add(new URL(bruto, base).toString());
+    } catch {
+      achados.add(bruto);
+    }
+  }
+  return [...achados].sort();
+}
+
 const tipo = resposta.contentType ?? '';
+if (process.argv.includes('--links')) {
+  const encontrados = links(corpo, resposta.finalUrl);
+  process.stdout.write(
+    `## Links (${encontrados.length})\n\n\`\`\`\n${encontrados.join('\n')}\n\`\`\`\n`,
+  );
+  process.exit(0);
+}
+
 if (process.argv.includes('--endpoints') && tipo.includes('json')) {
   const doc = JSON.parse(corpo) as Record<string, unknown>;
   process.stdout.write(`## Endpoints declarados\n\n\`\`\`\n${endpoints(doc).join('\n')}\n\`\`\`\n`);

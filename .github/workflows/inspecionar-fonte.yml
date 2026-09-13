@@ -26,6 +26,11 @@ on:
         required: false
         default: false
         type: boolean
+      links:
+        description: 'Se a resposta for HTML, imprimir so os links encontrados'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -51,9 +56,11 @@ jobs:
           URL: ${{ inputs.url }}
           BYTES: ${{ inputs.bytes }}
           ENDPOINTS: ${{ inputs.endpoints }}
+          LINKS: ${{ inputs.links }}
         run: |
           extra=()
           [ "$ENDPOINTS" = "true" ] && extra+=(--endpoints)
+          [ "$LINKS" = "true" ] && extra+=(--links)
           node --experimental-strip-types scripts/inspecionar-fonte.ts \
             --url "$URL" --bytes "$BYTES" "${extra[@]}" \
             | tee inspecao.md
