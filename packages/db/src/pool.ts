@@ -19,12 +19,62 @@ export interface QueryRunner {
 
 let pool: pg.Pool | null = null;
 
+/**
+ * Recusa uma DATABASE_URL malformada com uma mensagem que diz o que esta errado.
+ *
+ * Sem isto, o driver tenta conectar no que conseguiu interpretar e o erro chega
+ * como `getaddrinfo EAI_AGAIN hostname: "base"` — parece falha de rede e manda
+ * quem esta implantando investigar DNS, firewall e a regiao do banco, quando o
+ * problema e a string. Aconteceu na primeira coleta.
+ *
+ * A mensagem descreve a FORMA da string e nunca o conteudo: nem a senha, nem a
+ * string inteira, que costuma ser colada em um log publico junto com o erro
+ * (17.3).
+ */
+export function conferirFormato(connectionString: string): void {
+  const inicio = connectionString.slice(0, 40);
+  if (/\s/.test(connectionString.trim()) && !/^postgres(ql)?:\/\//.test(connectionString.trim())) {
+    throw new Error(
+      'DATABASE_URL nao parece uma URL: tem espaco e nao comeca com postgresql://. ' +
+        'Se voce colou uma linha inteira (por exemplo `DATABASE_URL=...` ou um comando psql), ' +
+        'guarde apenas a URL.',
+    );
+  }
+  if (!/^postgres(ql)?:\/\//.test(connectionString)) {
+    throw new Error(
+      `DATABASE_URL precisa comecar com postgresql:// — comeca com "${inicio.split(':')[0] ?? ''}".`,
+    );
+  }
+  if (/\[[A-Z-]*(PASSWORD|SENHA|YOUR)[A-Z-]*\]/i.test(connectionString)) {
+    throw new Error(
+      'DATABASE_URL ainda contem o marcador de senha entre colchetes (por exemplo [YOUR-PASSWORD]). ' +
+        'Substitua o marcador INTEIRO, colchetes inclusive, pela senha.',
+    );
+  }
+  let url: URL;
+  try {
+    url = new URL(connectionString);
+  } catch {
+    throw new Error(
+      'DATABASE_URL nao e uma URL analisavel. Caracteres como @ : / ? # dentro da senha precisam ' +
+        'ser codificados (@ vira %40), ou a senha deve ser trocada por uma sem simbolos.',
+    );
+  }
+  if (url.hostname === '') {
+    throw new Error('DATABASE_URL sem host. Confira se a parte depois do @ sobreviveu a copia.');
+  }
+  if (url.pathname === '' || url.pathname === '/') {
+    throw new Error(`DATABASE_URL sem nome de banco depois do host ${url.hostname}.`);
+  }
+}
+
 export function getPool(): pg.Pool {
   if (pool !== null) return pool;
   const connectionString = process.env['DATABASE_URL'];
   if (connectionString === undefined || connectionString === '') {
     throw new Error('DATABASE_URL nao definida');
   }
+  conferirFormato(connectionString);
   /**
    * Em execucao serverless cada instancia abre seu proprio pool, e centenas de
    * instancias esgotariam as conexoes do banco. Por isso: no maximo uma
