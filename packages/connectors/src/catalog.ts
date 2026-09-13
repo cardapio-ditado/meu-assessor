@@ -149,8 +149,10 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     integrationStatus: 'access_probed',
     probe: REACHED,
     knownLimitations: [
-      'arquivo historico e qualidade dos documentos nao medidos',
-      'edicoes antigas podem exigir OCR, que e ultimo recurso (13.2)',
+      'PDF com texto NATIVO na edicao 539 (24 paginas, 20 mapas ToUnicode); OCR nao foi necessario',
+      'o numero da edicao NAO e unico: ha edicao normal e suplemento com o mesmo numero no mesmo dia',
+      'o nome do arquivo PDF nao segue a data; o endereco e lido da pagina da edicao',
+      'os atos de dentro da edicao (portarias, extratos) nao viram afirmacao: falta extrator de ato',
     ],
     datasets: [{ name: 'edicoes', recordType: 'official_act', ...DAILY }],
   },

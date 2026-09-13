@@ -1,0 +1,95 @@
+<!--
+  RECORTE VERBATIM da pagina /edicoes do Diario Oficial de Varzea Grande,
+  capturado em 2026-09-13 pela execucao 34763384497 do workflow de inspecao.
+
+  E um RECORTE, nao a pagina inteira: contem as primeiras linhas do grupo de
+  julho de 2026, que e o que cabia no log da execucao. Serve para testar o
+  leitor contra a marcacao REAL do portal, inclusive o caso que mais importa:
+  a edicao 538 aparece DUAS vezes, como "Normal" e como "Suplemento", com o
+  mesmo numero e a mesma data e enderecos diferentes.
+-->
+    <div class="container page-content">
+        <div wire:snapshot="{&quot;data&quot;:{&quot;search&quot;:&quot;&quot;}}" wire:id="TrZ5YB4BGlpI2PyLBkMm" wire:name="editions" class="livewire-page">
+
+<div class="page-heading">📚 Edições por ano</div>
+<div class="page-subheading">Navegue pelas edições publicadas do Diário Oficial Eletrônico de Várzea Grande.</div>
+
+<input type="text" class="search-box" wire:model.live="search"
+       placeholder="🔍 Buscar por número, título, tipo ou data...">
+
+<div class="no-results" id="noResults" style="display:none">
+    Nenhuma edição encontrada.
+</div>
+
+<!--[if BLOCK]><![endif]-->    <!--[if BLOCK]><![endif]-->        <div class="year-card" x-data="{ open: true }">
+            <div class="year-header" @click="open = !open">
+                <h2>2026</h2>
+                <span class="arrow" :class="{ 'open': open }">▼</span>
+            </div>
+            <div class="year-body" x-show="open">
+                <!--[if BLOCK]><![endif]-->                    <div class="month-group">
+                        <div class="month-title">
+                            <span>Julho</span>
+                            <span class="count">13 edição(ões)</span>
+                        </div>
+                        <table class="editions-table">
+                            <thead>
+                                <tr>
+                                    <th>Nº</th>
+                                    <th>Data</th>
+                                    <th>Tipo</th>
+                                    <th>Edição</th>
+                                    <th class="acoes-col">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!--[if BLOCK]><![endif]-->                                    <tr>
+                                        <td class="numero">539</td>
+                                        <td>10/07/2026</td>
+                                        <td><span class="badge badge-tipo">Normal</span></td>
+                                        <td>Diário Oficial Eletrônico do Município 539</td>
+                                        <td class="acoes-col">
+                                            <a href="https://diariooficial.varzeagrande.mt.gov.br/edicao/189">📄 Abrir</a>
+                                        </td>
+                                    </tr>
+                                                                    <tr>
+                                        <td class="numero">538</td>
+                                        <td>09/07/2026</td>
+                                        <td><span class="badge badge-tipo">Suplemento</span></td>
+                                        <td>Diário Oficial Eletrônico do Município 538</td>
+                                        <td class="acoes-col">
+                                            <a href="https://diariooficial.varzeagrande.mt.gov.br/edicao/188">📄 Abrir</a>
+                                        </td>
+                                    </tr>
+                                                                    <tr>
+                                        <td class="numero">538</td>
+                                        <td>09/07/2026</td>
+                                        <td><span class="badge badge-tipo">Normal</span></td>
+                                        <td>Diário Oficial Eletrônico do Município 538</td>
+                                        <td class="acoes-col">
+                                            <a href="https://diariooficial.varzeagrande.mt.gov.br/edicao/187">📄 Abrir</a>
+                                        </td>
+                                    </tr>
+                                                                    <tr>
+                                        <td class="numero">537</td>
+                                        <td>08/07/2026</td>
+                                        <td><span class="badge badge-tipo">Normal</span></td>
+                                        <td>Diário Oficial Eletrônico do Município 537</td>
+                                        <td class="acoes-col">
+                                            <a href="https://diariooficial.varzeagrande.mt.gov.br/edicao/186">📄 Abrir</a>
+                                        </td>
+                                    </tr>
+                                                                    <tr>
+                                        <td class="numero">536</td>
+                                        <td>07/07/2026</td>
+                                        <td><span class="badge badge-tipo">Normal</span></td>
+                                        <td>Diário Oficial Eletrônico do Município 536</td>
+                                        <td class="acoes-col">
+                                            <a href="https://diariooficial.varzeagrande.mt.gov.br/edicao/185">📄 Abrir</a>
+                                        </td>
+                                    </tr>
+                            </tbody>
+                        </table>
+                    </div>
+            </div>
+        </div>

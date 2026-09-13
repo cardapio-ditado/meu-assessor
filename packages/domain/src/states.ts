@@ -136,4 +136,5 @@ export const ENTITY_KIND_LABEL: Record<string, string> = {
   amendment: 'emenda',
   transfer_instrument: 'instrumento de transferencia',
   news_item: 'noticia',
+  official_publication: 'publicacao oficial',
 };

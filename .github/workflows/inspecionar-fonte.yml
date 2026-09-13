@@ -36,6 +36,11 @@ on:
         required: false
         default: false
         type: boolean
+      pdf:
+        description: 'Se a resposta for PDF, diagnosticar texto nativo x digitalizado'
+        required: false
+        default: false
+        type: boolean
       filtro:
         description: 'Com endpoints: manter so os caminhos que contenham este texto'
         required: false
@@ -68,12 +73,14 @@ jobs:
           ENDPOINTS: ${{ inputs.endpoints }}
           LINKS: ${{ inputs.links }}
           CAMINHOS: ${{ inputs.caminhos }}
+          PDF: ${{ inputs.pdf }}
           FILTRO: ${{ inputs.filtro }}
         run: |
           extra=()
           [ "$ENDPOINTS" = "true" ] && extra+=(--endpoints)
           [ "$LINKS" = "true" ] && extra+=(--links)
           [ "$CAMINHOS" = "true" ] && extra+=(--caminhos)
+          [ "$PDF" = "true" ] && extra+=(--pdf)
           [ -n "$FILTRO" ] && extra+=(--filtro "$FILTRO")
           node --experimental-strip-types scripts/inspecionar-fonte.ts \
             --url "$URL" --bytes "$BYTES" "${extra[@]}" \

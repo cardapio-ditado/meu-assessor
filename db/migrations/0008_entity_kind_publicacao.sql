@@ -1,0 +1,11 @@
+-- Edicao de diario oficial nao e noticia.
+--
+-- O conector do F04 precisava de um tipo de entidade para a edicao publicada.
+-- Os tipos existentes nao servem: `news_item` e "noticia", e uma edicao do
+-- Diario Oficial rotulada assim apareceria como noticia na tela — afirmando
+-- sobre o municipio algo que a fonte nao diz. O 10.1 pede que o modelo
+-- distinga o que e distinto, e este e um caso claro.
+--
+-- `alter type ... add value` e aditivo: nao reescreve linha nenhuma e nao
+-- invalida os tipos existentes.
+alter type ma.entity_kind add value if not exists 'official_publication';
