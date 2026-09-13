@@ -112,11 +112,29 @@ O que falta, concretamente:
 O esquema ja acomoda isso sem migracao de dados: `ma.users` recebe as colunas de
 credencial e `ma.sessions` ja distingue expiracao de revogacao.
 
-Enquanto isso nao existir, trate a URL como **link privado**: qualquer pessoa
+Enquanto isso nao existir, verifique a protecao de implantacao da plataforma,
+que e a camada ANTES da aplicacao. No projeto Vercel atual (`meu-assessor`) a
+autenticacao da plataforma esta **ligada** para todos os enderecos exceto
+dominio proprio: quem nao estiver autenticado na conta nem chega a tela de
+login. Confirme com
+
+```
+vercel project inspect meu-assessor    # ou o painel: Settings > Deployment Protection
+```
+
+antes de passar qualquer endereco adiante, porque isso e configuracao de
+projeto e pode ser desligado sem aviso.
+
+Duas consequencias que costumam surpreender:
+
+- **um dominio proprio nao herda essa protecao** nesse modo. Ao apontar um
+  dominio, a unica barreira volta a ser a senha unica;
+- **enquanto ela estiver ligada, quem for testar precisa de acesso a conta da
+  Vercel.** Um endereco que "nao abre" para o piloto costuma ser isso, nao
+  falha da aplicacao.
+
+Sem a protecao da plataforma, trate a URL como **link privado**: qualquer pessoa
 com o endereco chega a tela de login, e a unica barreira e a senha unica.
-Verifique tambem a protecao de implantacao da plataforma — neste projeto ela
-esta **desativada** (sem senha, sem SSO, sem IP confiavel), entao nao existe
-camada antes da aplicacao.
 
 ## O que falta para ser producao
 
