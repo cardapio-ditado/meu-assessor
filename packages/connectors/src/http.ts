@@ -146,6 +146,21 @@ function backoffMs(attempt: number): number {
   return Math.min(16_000, 2_000 * 2 ** (attempt - 1));
 }
 
+/** Le um recorte curto do corpo de uma resposta de erro, sem deixar falhar. */
+async function lerRecorte(response: Response, limite = 300): Promise<string> {
+  try {
+    return (await response.text()).slice(0, limite);
+  } catch {
+    return '';
+  }
+}
+
+/** Formata o recorte em uma linha, colapsando quebras para caber no log. */
+export function motivoDoProvedor(recorte: string): string {
+  const limpo = recorte.replace(/\s+/g, ' ').trim();
+  return limpo === '' ? '' : ` - o provedor respondeu: ${limpo}`;
+}
+
 export async function fetchGuarded(rawUrl: string, options: FetchOptions = {}): Promise<FetchResult> {
   const timeoutMs = options.timeoutMs ?? Number(process.env['INGESTION_TIMEOUT_MS'] ?? 25_000);
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
@@ -194,7 +209,21 @@ export async function fetchGuarded(rawUrl: string, options: FetchOptions = {}): 
           throw new ConnectorError(`erro do provedor (${response.status})`, 'http_error', true);
         }
         if (!response.ok) {
-          throw new ConnectorError(`resposta ${response.status}`, 'http_error', false);
+          /**
+           * Uma API que recusa 4xx quase sempre DIZ o motivo no corpo — parametro
+           * fora de formato, intervalo alem do permitido, filtro obrigatorio
+           * ausente. Descartar esse corpo transforma "a data tinha que ser
+           * yyyy-MM-dd" em "resposta 400", e quem escreve o conector volta a
+           * adivinhar, que e exatamente o que 8.3 proibe.
+           *
+           * O recorte e curto e so acompanha o erro; nada disso vai para o
+           * usuario final nem para o banco.
+           */
+          throw new ConnectorError(
+            `resposta ${response.status}${motivoDoProvedor(await lerRecorte(response))}`,
+            'http_error',
+            false,
+          );
         }
 
         const declared = response.headers.get('content-length');
