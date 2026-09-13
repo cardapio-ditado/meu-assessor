@@ -138,6 +138,22 @@ centenas de instancias frias esgotariam as conexoes do banco. O `pool.ts`
 detecta o ambiente (`VERCEL` ou `MA_SERVERLESS`) e limita a uma conexao por
 instancia.
 
+Na Supabase ha um segundo motivo, e ele nao e preferencia: o host da conexao
+direta resolve **somente em IPv6**, enquanto a funcao serverless sai por IPv4.
+Com a conexao direta a aplicacao falha por rede inalcancavel, com credencial
+correta e banco saudavel — sintoma que nao se parece com a causa. Confira antes
+de compor a `DATABASE_URL`:
+
+```
+getent hosts db.<ref>.supabase.co          # so AAAA: inalcancavel da Vercel
+getent hosts aws-N-<regiao>.pooler.supabase.com   # A (IPv4): e este que serve
+```
+
+O host exato do pooler e o formato do usuario para um papel que **nao** e o
+`postgres` saem do painel do provedor (botao *Connect*, secao *Transaction
+pooler*); nao os deduza. Trocar o usuario e a senha na string copiada de la e a
+unica parte manual.
+
 `withContext` roda tudo dentro de uma transacao explicita com
 `set_config(..., is_local => true)`, que e exatamente o que o modo transacao
 suporta: o contexto morre com a transacao e nao vaza para a proxima requisicao
