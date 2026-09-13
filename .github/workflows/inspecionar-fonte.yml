@@ -26,6 +26,21 @@ on:
         required: false
         default: false
         type: boolean
+      links:
+        description: 'Se a resposta for HTML, imprimir so os links encontrados'
+        required: false
+        default: false
+        type: boolean
+      caminhos:
+        description: 'Com endpoints: listar so os caminhos, sem os parametros'
+        required: false
+        default: false
+        type: boolean
+      filtro:
+        description: 'Com endpoints: manter so os caminhos que contenham este texto'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -51,9 +66,15 @@ jobs:
           URL: ${{ inputs.url }}
           BYTES: ${{ inputs.bytes }}
           ENDPOINTS: ${{ inputs.endpoints }}
+          LINKS: ${{ inputs.links }}
+          CAMINHOS: ${{ inputs.caminhos }}
+          FILTRO: ${{ inputs.filtro }}
         run: |
           extra=()
           [ "$ENDPOINTS" = "true" ] && extra+=(--endpoints)
+          [ "$LINKS" = "true" ] && extra+=(--links)
+          [ "$CAMINHOS" = "true" ] && extra+=(--caminhos)
+          [ -n "$FILTRO" ] && extra+=(--filtro "$FILTRO")
           node --experimental-strip-types scripts/inspecionar-fonte.ts \
             --url "$URL" --bytes "$BYTES" "${extra[@]}" \
             | tee inspecao.md

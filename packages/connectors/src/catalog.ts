@@ -219,8 +219,16 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     requiresCredentials: false,
     integrationStatus: 'access_probed',
     probe: REACHED,
-    knownLimitations: ['modulos, filtros e modelos a validar'],
-    datasets: [{ name: 'instrumentos', recordType: 'transfer_instrument', ...WEEKLY }],
+    knownLimitations: [
+      'a API tem quatro modulos (downloads, especiais, fundoafundo, parcerias); so `especiais` tem conector',
+      'convenios e contratos de repasse sao distribuidos como CSV em /downloads, nao por API',
+      'os filtros recebem o valor cru; sintaxe de operador do PostgREST devolve 200 com lista vazia',
+      'a fonte nao publica data de publicacao do plano de acao, so a data de aceite',
+    ],
+    // O nome do conjunto diz o que ele REALMENTE cobre. Chamar de
+    // "instrumentos" faria a matriz de cobertura (9.3) prometer convenios e
+    // fundo a fundo, que este conector nao coleta.
+    datasets: [{ name: 'planos-acao-especiais', recordType: 'transfer_instrument', ...WEEKLY }],
   },
   {
     code: 'F24',

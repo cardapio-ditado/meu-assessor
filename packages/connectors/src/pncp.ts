@@ -21,6 +21,11 @@
  *     tamanhoPagina  opcional      o provedor recusa valores pequenos demais
  */
 import { ConnectorError } from './http.ts';
+// A conversao de dinheiro e a mesma em todos os conectores e mora em um so
+// lugar (10.4). Reexportada porque faz parte da interface deste modulo.
+import { centavosExatos } from './dinheiro.ts';
+
+export { centavosExatos };
 
 export const PNCP_BASE = 'https://pncp.gov.br/api/consulta/v1';
 
@@ -101,27 +106,6 @@ export interface PaginaContratos {
   readonly totalPaginas: number;
   readonly paginaAtual: number;
   readonly paginasRestantes: number;
-}
-
-/**
- * Converte o valor do PNCP em centavos EXATOS.
- *
- * O JSON traz o valor como numero com quatro casas (673950.0000). Dinheiro do
- * produto e BigInt de centavos (10.4), e a conversao so e segura quando o valor
- * realmente cabe em centavos. Arredondar em silencio trocaria o numero do
- * contrato por outro parecido — o tipo de erro que ninguem percebe lendo a tela.
- *
- * Devolve `null` quando nao cabe; quem chama registra a ressalva e deixa a
- * afirmacao para revisao, em vez de publicar um valor inventado.
- */
-export function centavosExatos(valor: unknown): bigint | null {
-  if (typeof valor !== 'number' || !Number.isFinite(valor)) return null;
-  const centavos = valor * 100;
-  // A tolerancia absorve o erro de representacao binaria de valores com duas
-  // casas; um valor com decimos de centavo fica fora dela.
-  if (Math.abs(centavos - Math.round(centavos)) > 1e-6) return null;
-  if (!Number.isSafeInteger(Math.round(centavos))) return null;
-  return BigInt(Math.round(centavos));
 }
 
 function texto(valor: unknown): string | null {

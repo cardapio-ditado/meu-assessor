@@ -104,7 +104,7 @@ interface ParametroOpenApi {
   readonly schema?: { readonly type?: string; readonly format?: string };
 }
 
-function endpoints(doc: Record<string, unknown>): string[] {
+function endpoints(doc: Record<string, unknown>, soCaminhos: boolean, filtro: string | null): string[] {
   const linhas: string[] = [];
   const servidores = (doc['servers'] as { url?: string }[] | undefined) ?? [];
   linhas.push(`servidores: ${servidores.map((s) => s.url ?? '?').join(', ') || '(nao declarado)'}`);
@@ -112,6 +112,12 @@ function endpoints(doc: Record<string, unknown>): string[] {
   for (const [caminho, operacoes] of Object.entries(caminhos)) {
     for (const [metodo, op] of Object.entries(operacoes)) {
       const operacao = op as { summary?: string; parameters?: ParametroOpenApi[] };
+      const assunto = `${caminho} ${operacao.summary ?? ''}`.toLowerCase();
+      if (filtro !== null && !assunto.includes(filtro.toLowerCase())) continue;
+      if (soCaminhos) {
+        linhas.push(`${metodo.toUpperCase()} ${caminho}${operacao.summary === undefined ? '' : ` — ${operacao.summary}`}`);
+        continue;
+      }
       linhas.push('');
       linhas.push(`${metodo.toUpperCase()} ${caminho}`);
       if (operacao.summary !== undefined) linhas.push(`  ${operacao.summary}`);
@@ -125,10 +131,45 @@ function endpoints(doc: Record<string, unknown>): string[] {
   return linhas;
 }
 
+/**
+ * Links de uma pagina HTML, sem repeticao.
+ *
+ * Um indice de API ou de portal diz onde estao os recursos, e e isso que se
+ * procura antes de escrever conector. Imprimir o HTML cru nao serve: uma pagina
+ * de documentacao costuma ter um favicon embutido em base64 que sozinho ocupa
+ * todo o recorte — foi o que aconteceu na primeira inspecao do Transferegov.
+ */
+function links(html: string, base: string): string[] {
+  const achados = new Set<string>();
+  for (const m of html.matchAll(/(?:href|src)\s*=\s*["']([^"']+)["']/gi)) {
+    const bruto = m[1];
+    if (bruto === undefined) continue;
+    // `data:` e ancora nao levam a lugar nenhum.
+    if (bruto.startsWith('data:') || bruto.startsWith('#') || bruto.startsWith('javascript:')) continue;
+    try {
+      achados.add(new URL(bruto, base).toString());
+    } catch {
+      achados.add(bruto);
+    }
+  }
+  return [...achados].sort();
+}
+
 const tipo = resposta.contentType ?? '';
+if (process.argv.includes('--links')) {
+  const encontrados = links(corpo, resposta.finalUrl);
+  process.stdout.write(
+    `## Links (${encontrados.length})\n\n\`\`\`\n${encontrados.join('\n')}\n\`\`\`\n`,
+  );
+  process.exit(0);
+}
+
 if (process.argv.includes('--endpoints') && tipo.includes('json')) {
   const doc = JSON.parse(corpo) as Record<string, unknown>;
-  process.stdout.write(`## Endpoints declarados\n\n\`\`\`\n${endpoints(doc).join('\n')}\n\`\`\`\n`);
+  // Uma API grande nao cabe num log: `--caminhos` lista so os enderecos, e
+  // `--filtro` restringe ao assunto, que e como se procura o recurso certo.
+  const resumo = endpoints(doc, process.argv.includes('--caminhos'), arg('--filtro') ?? null);
+  process.stdout.write(`## Endpoints declarados (${resumo.length} linhas)\n\n\`\`\`\n${resumo.join('\n')}\n\`\`\`\n`);
   process.exit(0);
 }
 

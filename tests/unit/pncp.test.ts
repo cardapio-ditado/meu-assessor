@@ -5,13 +5,15 @@
  * capturada em 2026-09-13. Testar contra ela e o que separa "o parser compila"
  * de "o parser le o que a fonte manda": os nomes de campo aqui nao foram
  * escolhidos por mim, foram observados (8.3).
+ *
+ * A conversao de dinheiro em si e testada em `dinheiro.test.ts`: ela deixou de
+ * ser do PNCP quando o segundo conector passou a usar a mesma funcao.
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { ConnectorError } from '../../packages/connectors/src/http.ts';
 import {
-  centavosExatos,
   digitosCnpj,
   parsePaginaContratos,
   textoDoContrato,
@@ -47,28 +49,6 @@ describe('endereco da consulta', () => {
 
   test('digitosCnpj remove pontuacao', () => {
     assert.equal(digitosCnpj('03.507.548/0001-10'), '03507548000110');
-  });
-});
-
-describe('valores em centavos exatos (10.4)', () => {
-  test('o valor da amostra converte sem perda', () => {
-    assert.equal(centavosExatos(673950.0), 67395000n);
-  });
-
-  test('duas casas decimais convertem', () => {
-    assert.equal(centavosExatos(1234.56), 123456n);
-  });
-
-  test('decimo de centavo NAO e arredondado em silencio', () => {
-    // Arredondar trocaria o valor do contrato por outro parecido, e ninguem
-    // perceberia lendo a tela. Devolver null obriga a registrar a ressalva.
-    assert.equal(centavosExatos(10.005), null);
-  });
-
-  test('ausente e nulo, nao zero', () => {
-    assert.equal(centavosExatos(null), null);
-    assert.equal(centavosExatos(undefined), null);
-    assert.equal(centavosExatos('673950'), null);
   });
 });
 

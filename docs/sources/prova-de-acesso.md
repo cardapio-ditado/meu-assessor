@@ -122,7 +122,7 @@ não muda nenhuma das duas coisas, e é por isso que a coluna abaixo continua em
 | F05 | Jornal Oficial AMM-MT | publicações e histórico complementar | `access_probed` | não presumir que substitui todo o diário próprio (§8.2) |
 | F06 | PNCP — dados abertos | contratações e documentos | `access_probed` | recorte e histórico a verificar; endpoints devem sair da documentação oficial, nunca de suposição (§8.3) |
 | F07 | Portal da Transparência / CGU | emendas e execução federal | `access_probed` | **exige cadastro e token** conforme a documentação; limites de requisição a confirmar |
-| F10 | Transferegov.br | instrumentos e transferências | `access_probed` | módulos, filtros e modelos a validar |
+| F10 | Transferegov.br | instrumentos e transferências | `access_probed` | conector escrito para o módulo `especiais` apenas; convênios e fundo a fundo **não** cobertos — ver [`conectores.md`](conectores.md) |
 | F24 | Geo-obras Cidadão / TCE-MT | evidências sobre obras | **`blocked`** | ver abaixo |
 
 ### F24 é um bloqueio próprio, além do ambiente

@@ -1,0 +1,50 @@
+# Coleta de planos de acao de transferencias ESPECIAIS no Transferegov (F10).
+#
+# Disparo MANUAL. Nao ha agendador aqui, e o 28.2 e explicito: agendamento
+# descrito nao e agendamento pronto.
+#
+# Como a coleta do PNCP, este workflow toca o banco. Por isso: permissao de
+# leitura no repositorio, segredo entregue por `env` no passo que precisa dele,
+# e nenhuma impressao da string de conexao.
+#
+# Nao ha janela de datas: a consulta pede TODOS os planos do beneficiario. A
+# fonte nao oferece filtro por data de aceite, e inventar uma janela faria a
+# matriz de cobertura afirmar um recorte que nao foi pedido (9.3).
+name: Coletar transferencias especiais (F10)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # A coleta fala com o banco, entao precisa do driver.
+      - run: npm ci
+
+      - name: Coletar
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_SSL_NO_VERIFY: '1'
+          INGESTION_ALLOWED_HOSTS: api-publica.transferegov.gestao.gov.br
+          DEFAULT_TENANT_SLUG: varzea-grande
+          INGESTION_LOGIN: admin.implantacao
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL nao esta configurada como secret do repositorio." >&2
+            echo "Sem ela a coleta nao tem onde gravar. Settings > Secrets and variables > Actions." >&2
+            exit 1
+          fi
+          node --experimental-strip-types workers/ingestion/src/transferegov-planos-acao.ts
