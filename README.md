@@ -42,14 +42,20 @@ evidência de execução. O quadro abaixo é literal.
 
 ### O bloqueio de acesso às fontes
 
-Todos os portais do catálogo (F01 a F24) foram testados em 2026-09-12 neste
-ambiente e **todos retornaram 403 no CONNECT do proxy de egresso**. O bloqueio é
-da política de rede do ambiente de execução, **não dos portais**: apenas
-registros de pacotes (npm, PyPI) e a API do GitHub são alcançáveis daqui.
+Sondadas em 2026-09-13 pelo workflow *Prova de acesso as fontes (E1)*, de um
+runner com saída de rede pública: **8 das 9 alcançadas** (HTTP 200). Só o
+Geo-obras / TCE-MT (F24) não respondeu — e o briefing já registrava rejeição de
+acesso na preparação. Os controles neutros da mesma execução responderam, que é
+o que autoriza atribuir os desfechos às fontes.
 
-Consequência honesta: a etapa **E1 do §24.2 ("Provar acesso às fontes") não foi
-cumprida**. Nenhum conector foi validado contra dados reais, nenhuma cobertura
-histórica foi medida e nenhum registro real foi coletado.
+O que isso **não** quer dizer (§C.2): nenhum conector foi validado contra dados
+reais, nenhuma cobertura histórica foi medida e nenhum registro real foi
+coletado. Nenhuma fonte está `connector_verified` nem `enabled`. No caso do F07,
+o que respondeu foi a página de documentação — a API da CGU exige cadastro e
+token, então o acesso aos dados continua não demonstrado.
+
+Detalhe por fonte, incluindo a tentativa anterior que media a rede do ambiente e
+não os portais, em `docs/sources/prova-de-acesso.md`.
 
 O que foi entregue no lugar, conforme §1.3 ("Se algo estiver bloqueado, entregue
 o máximo verificável"):

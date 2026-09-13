@@ -1,57 +1,99 @@
 # Prova de acesso às fontes — E1 (§24.2)
 
-Data da execução: **2026-09-12**
-Ambiente: contêiner de execução remota deste repositório
-Ferramenta: `curl 8.5.0`, seguindo redirecionamentos, timeout de 25 s,
-`User-Agent: MeuAssessor-AccessProbe/0.1`
+## Resultado: 8 das 9 fontes alcançadas (2026-09-13)
 
-## Resultado: E1 NÃO cumprida
+| | |
+|---|---|
+| Execução | workflow **Prova de acesso as fontes (E1)**, disparo manual — [run 34757007445](https://github.com/cardapio-ditado/meu-assessor/actions/runs/34757007445) |
+| Ferramenta | `scripts/prova-acesso.ts`, usando `fetchGuarded` — **o mesmo cliente da coleta**, não um `curl` mais permissivo |
+| Ambiente | runner `ubuntu-latest` do GitHub Actions |
+| Agente | `MeuAssessor/0.1 (prova de acesso E1; +https://github.com/cardapio-ditado/meu-assessor)` |
+| Volume | uma requisição por fonte, sem retentativa, com intervalo entre elas |
 
-Nenhuma das 9 fontes do catálogo foi alcançada. Todas falharam no
-estabelecimento do túnel HTTPS, com **403 no CONNECT do proxy de egresso**.
+| Código | Fonte | Endereço sondado | Desfecho | Tempo |
+|---|---|---|---|---|
+| F01 | Prefeitura Municipal de Várzea Grande | `https://www.varzeagrande.mt.gov.br/` | **200** | 4207 ms |
+| F02 | Portal da Transparência de VG | `https://www.varzeagrande.mt.gov.br/transparencia` | **200** | 2759 ms |
+| F03 | Portal municipal de emendas | `https://emendas.varzeagrande.mt.gov.br/portal` | **200** | 1894 ms |
+| F04 | Diário Oficial de VG | `https://diariooficial.varzeagrande.mt.gov.br/` | **200** | 1477 ms |
+| F05 | Jornal Oficial AMM-MT | `https://amm.diariomunicipal.org/` | **200** | 750 ms |
+| F06 | PNCP | `https://pncp.gov.br/api/consulta/swagger-ui/index.html` | **200** | 2611 ms |
+| F07 | Portal da Transparência / CGU | `https://api.portaldatransparencia.gov.br/swagger-ui/index.html` | **200** | 1015 ms |
+| F10 | Transferegov.br | `https://api-publica.transferegov.gestao.gov.br/` | **200** | 2528 ms |
+| F24 | Geo-obras Cidadão / TCE-MT | `https://geoobras.tce.mt.gov.br/` | falhou | 21 685 ms |
 
-```
-F01 Prefeitura VG            curl: (56) CONNECT tunnel failed, response 403
-F02 Transparencia VG         curl: (56) CONNECT tunnel failed, response 403
-F03 Emendas VG               curl: (56) CONNECT tunnel failed, response 403
-F04 Diario Oficial VG        curl: (56) CONNECT tunnel failed, response 403
-F05 AMM-MT                   curl: (56) CONNECT tunnel failed, response 403
-F06 PNCP                     curl: (56) CONNECT tunnel failed, response 403
-F07 CGU API                  curl: (56) CONNECT tunnel failed, response 403
-F10 Transferegov             curl: (56) CONNECT tunnel failed, response 403
-F24 Geo-obras TCE-MT         curl: (56) CONNECT tunnel failed, response 403
-```
+Nenhum `robots.txt` proibiu o caminho sondado. A consulta a `robots.txt`
+acontece **antes** da requisição à página, e um caminho proibido não é
+requisitado.
 
-## O bloqueio é do ambiente, não dos portais
+### Por que estes desfechos valem
 
-Isso foi verificado, não suposto. No mesmo ambiente, no mesmo instante:
+Os controles neutros da mesma execução — `example.com` e `www.gov.br` —
+responderam **200**. É isso que autoriza atribuir os desfechos às fontes.
 
-```
-https://registry.npmjs.org/         200
-https://pypi.org/simple/            200
-https://api.github.com/rate_limit   200
-https://example.com/                falha (403 no CONNECT)
-https://www.planalto.gov.br/        falha (403 no CONNECT)
-```
+Sem esse cuidado a conclusão se inverte sozinha: a tentativa anterior, abaixo,
+produziu "9 de 9 bloqueadas" quando nenhum portal havia sido contatado. O script
+recusa afirmar desfecho por fonte quando os controles falham.
 
-Um host neutro (`example.com`) e um host de legislação
-(`planalto.gov.br`) falham do mesmo modo que os portais municipais, enquanto
-registros de pacotes e a API do GitHub respondem. A política de egresso do
-ambiente permite uma allowlist estreita e recusa todo o resto.
+### F24: o único que não respondeu
 
-A documentação do próprio proxy instrui: *"The destination host is not allowed
-by your organization's egress policy for this session. Do not retry or route
-around it — report the blocked host."* Nenhuma tentativa de contorno foi feita
-(§8.1: "não contornar bloqueios").
+Não respondeu em 25 s, enquanto as outras oito fontes e os dois controles
+responderam na mesma execução. Uma falha isolada **não** separa indisponibilidade
+momentânea de bloqueio por origem ou filtro de rede — reexecutar o workflow em
+outro horário é o teste barato que distingue os dois.
+
+Somada à rejeição que o briefing já registra na preparação (referência F24),
+mantém-se `blocked`. Continua sendo assunto a resolver com o TCE-MT, não uma
+integração pendente de código.
+
+### O que esta prova estabelece — e o que não
+
+**Estabelece:** o endereço de oito fontes respondeu, em data registrada, a partir
+de uma rede pública, com o cliente de coleta do produto e respeitando o
+`robots.txt` declarado.
+
+**Não estabelece, e a diferença é a do §C.2:**
+
+- que exista conector — nenhuma fonte está `connector_verified`;
+- que o recorte histórico esteja disponível (§8.4) — nada disso foi medido;
+- cobertura de campos, paginação, estabilidade de contrato;
+- **no caso do F07, acesso aos dados**: o que respondeu 200 foi a página de
+  documentação. A API da CGU exige cadastro e token, então o acesso aos dados
+  continua não demonstrado.
+
+Uma página que responde 200 não prova que o conjunto de contratos foi
+atualizado, e uma tabela vazia com HTTP 200 pode ser filtro quebrado (§13.4,
+T27) — por isso `assessEmptyBatch` existe e é testado.
+
+## Tentativa anterior, e por que não valia (2026-09-12)
+
+Fica registrada porque distingue "não sabemos" de "o portal não responde".
+
+Executada de dentro do contêiner de execução deste repositório, as 9 fontes
+falharam com **403 no CONNECT** do proxy de egresso. No mesmo instante,
+`example.com` e `planalto.gov.br` falharam do mesmo modo, enquanto
+`registry.npmjs.org`, `pypi.org` e `api.github.com` responderam 200: a política
+de rede do ambiente permite uma allowlist estreita e recusa o resto.
+
+Nenhuma tentativa de contorno foi feita (§8.1). A própria documentação do proxy
+instrui a relatar o host bloqueado em vez de rotear em volta.
+
+**A lição virou código.** Aquele resultado, lido sem controles, diria "nove
+portais bloqueados" — uma afirmação falsa sobre nove órgãos públicos, do tipo
+que alguém copia para um relatório. Os controles neutros do
+`scripts/prova-acesso.ts` existem por causa disso.
 
 ## Quem resolve e qual é o passo exato
 
+O bloqueio de rede continua valendo **para o contêiner de execução**, e deixou
+de ser impedimento porque a sondagem roda em outro lugar.
+
 | Quem | O quê |
 |---|---|
-| Responsável pelo ambiente de execução | liberar os 9 domínios abaixo na política de egresso, **ou** executar a ingestão em ambiente com saída para a internet pública |
-| Operação do produto | depois da liberação: definir `INGESTION_ALLOWED_HOSTS` e rodar a sonda de acesso |
+| Operação do produto | disparar o workflow *Prova de acesso as fontes (E1)* quando quiser reverificar; o relatório sai no resumo da execução e como artefato |
+| Responsável pelo ambiente de execução | **somente se** a coleta tiver de rodar de dentro deste contêiner: liberar os domínios abaixo na política de egresso |
 
-Domínios a liberar:
+Domínios das fontes:
 
 ```
 www.varzeagrande.mt.gov.br
@@ -64,14 +106,12 @@ api-publica.transferegov.gestao.gov.br
 geoobras.tce.mt.gov.br
 ```
 
-Nenhum outro trabalho foi interrompido por esse bloqueio: o esquema, o pipeline,
-o motor de resposta, a API, a aplicação e os 87 testes foram entregues e
-verificados (§1.3).
-
 ## Catálogo e situação de integração
 
 `integration_status` é um campo do banco, não uma opinião no README. Nenhuma
-fonte está `connector_verified`, e nenhuma está `enabled`.
+fonte está `connector_verified`, e nenhuma está `enabled` — alcançar o endereço
+não muda nenhuma das duas coisas, e é por isso que a coluna abaixo continua em
+`access_probed` depois de uma sondagem bem-sucedida.
 
 | Código | Fonte | Papel esperado | Situação | Limitações registradas |
 |---|---|---|---|---|
@@ -96,12 +136,13 @@ Portanto: mesmo com a rede liberada, F24 continua sendo um bloqueio a resolver
 com o TCE-MT, e não pode ser descrito como integração concluída (§24.2). Está
 marcado `blocked` no banco.
 
-## O que precisa acontecer depois da liberação
+## O que vem depois da E1
 
-Na ordem do §24.2, e sem pular etapas:
+Na ordem do §24.2, e sem pular etapas. O passo 1 está feito — é o que este
+documento registra:
 
-1. rodar a sonda de acesso e registrar, por fonte: o que foi acessado, o que
-   falhou e o que exige chave;
+1. ~~rodar a sonda de acesso e registrar, por fonte: o que foi acessado, o que
+   falhou e o que exige chave~~ — **feito em 2026-09-13**;
 2. para cada fonte alcançada, preencher a ficha obrigatória do §8.4 — período
    **efetivamente** disponível, não o desejado;
 3. construir um conector por vez, com teste de contrato e amostra reproduzível
