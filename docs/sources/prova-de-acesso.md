@@ -118,7 +118,7 @@ não muda nenhuma das duas coisas, e é por isso que a coluna abaixo continua em
 | F01 | Prefeitura Municipal de Várzea Grande | notícias, estrutura, caminhos | `access_probed` | cobertura histórica do arquivo não medida; notícia oficial não substitui registro administrativo (§8.1) |
 | F02 | Portal da Transparência de VG | despesas, receitas, contratos, convênios | `access_probed` | é um índice: cada destino exige teste individual; o CNPJ 03.507.548/0001-10 é o ente principal, **não** a família completa de fundos e autarquias (§8.2) |
 | F03 | Portal municipal de emendas | relações e registros de emendas | `access_probed` | escopo, paginação e acesso estruturado não validados |
-| F04 | Diário Oficial de VG | atos, contratos, aditivos | `access_probed` | arquivo histórico e qualidade não medidos; edições antigas podem exigir OCR, que é último recurso (§13.2) |
+| F04 | Diário Oficial de VG | atos, contratos, aditivos | `access_probed` | PDF com **texto nativo** (OCR dispensado); número de edição não é único; atos de dentro da edição ainda não viram afirmação — ver [`conectores.md`](conectores.md) |
 | F05 | Jornal Oficial AMM-MT | publicações e histórico complementar | `access_probed` | não presumir que substitui todo o diário próprio (§8.2) |
 | F06 | PNCP — dados abertos | contratações e documentos | `access_probed` | recorte e histórico a verificar; endpoints devem sair da documentação oficial, nunca de suposição (§8.3) |
 | F07 | Portal da Transparência / CGU | emendas e execução federal | `access_probed` | **exige cadastro e token** conforme a documentação; limites de requisição a confirmar |

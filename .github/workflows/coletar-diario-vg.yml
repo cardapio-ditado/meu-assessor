@@ -1,0 +1,72 @@
+# Coleta de edicoes do Diario Oficial de Varzea Grande (F04).
+#
+# Disparo MANUAL. Nao ha agendador aqui, e o 28.2 e explicito: agendamento
+# descrito nao e agendamento pronto.
+#
+# Este workflow toca o banco. Por isso: permissao de leitura no repositorio,
+# segredo entregue por `env` no passo que precisa dele, e nenhuma impressao da
+# string de conexao.
+#
+# Cada edicao e um PDF de centenas de kilobytes e a extracao de texto custa CPU,
+# entao o tempo limite e maior que o das fontes de API.
+name: Coletar Diario Oficial de VG (F04)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ultimas:
+        description: 'Quantas edicoes mais recentes coletar (ignorado se houver janela de datas)'
+        required: false
+        default: '10'
+        type: string
+      de:
+        description: 'Inicio da janela (aaaa-mm-dd), opcional'
+        required: false
+        default: ''
+        type: string
+      ate:
+        description: 'Fim da janela (aaaa-mm-dd), opcional'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Coletar
+        shell: bash
+        # As entradas passam por `env`, nunca interpoladas dentro do comando.
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_SSL_NO_VERIFY: '1'
+          ULTIMAS: ${{ inputs.ultimas }}
+          DE: ${{ inputs.de }}
+          ATE: ${{ inputs.ate }}
+          INGESTION_ALLOWED_HOSTS: diariooficial.varzeagrande.mt.gov.br
+          DEFAULT_TENANT_SLUG: varzea-grande
+          INGESTION_LOGIN: admin.implantacao
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL nao esta configurada como secret do repositorio." >&2
+            echo "Sem ela a coleta nao tem onde gravar. Settings > Secrets and variables > Actions." >&2
+            exit 1
+          fi
+          extra=()
+          [ -n "$DE" ] && extra+=(--de "$DE")
+          [ -n "$ATE" ] && extra+=(--ate "$ATE")
+          [ -n "$ULTIMAS" ] && extra+=(--ultimas "$ULTIMAS")
+          node --experimental-strip-types workers/ingestion/src/diario-vg-edicoes.ts "${extra[@]}"

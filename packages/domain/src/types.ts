@@ -140,6 +140,7 @@ export const ENTITY_KINDS = [
   'amendment',       // emenda
   'transfer_instrument',
   'news_item',
+  'official_publication',  // edicao de diario oficial: publica, mas nao e noticia
 ] as const;
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 

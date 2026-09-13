@@ -35,6 +35,7 @@
     "typescript": "5.9.3"
   },
   "dependencies": {
+    "pdfjs-dist": "^6.3.289",
     "pg": "8.16.3"
   }
 }

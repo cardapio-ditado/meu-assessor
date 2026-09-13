@@ -117,3 +117,68 @@ Dados bancários (`numero_conta_plano_acao`, agência, dígitos, `id_agencia_con
 e `email_camara` **não** entram no banco nem no texto indexado. São dados
 abertos de ente público, mas nenhuma pergunta que este produto responde precisa
 deles, e o que não é guardado não vaza. Há teste que falha se voltarem.
+
+---
+
+## F04 — Diário Oficial de Várzea Grande, edições
+
+- **Páginas:** `https://diariooficial.varzeagrande.mt.gov.br/edicoes` (listagem) e
+  `/edicao/{id}` (uma edição, com o link do PDF).
+- **Recorte:** as N edições mais recentes (padrão 10), ou uma janela `--de`/`--ate`
+  por data de publicação.
+- **Chave de deduplicação:** o **id interno do portal**, não o número da edição.
+- **Execução:** workflow *Coletar Diário Oficial de VG (F04)*.
+
+### Texto nativo, sem OCR
+
+Antes de escrever qualquer coisa, a edição 539 foi diagnosticada (execução
+34763480181): **24 páginas, 153 `/Font`, 20 `/FontFile2`, 20 `/ToUnicode`, 7.127
+operadores de texto** e apenas 4 imagens. É documento de texto, não digitalização.
+OCR é último recurso (§13.2) e **não foi necessário**.
+
+A extração usa `pdfjs-dist` e não um extrator próprio. O motivo é o `/ToUnicode`:
+fonte embutida em subconjunto não usa ASCII nos fluxos, usa índice de glifo, e só
+o mapa diz qual caractere é qual. Um extrator ingênuo acerta as fontes de
+codificação padrão e devolve **lixo plausível** nas outras — e lixo plausível é o
+pior desfecho possível aqui, porque a evidência do §12.1 é um trecho que alguém
+vai ler e conferir. Texto embaralhado que parece texto passa por revisão e vira
+citação falsa.
+
+### Três armadilhas encontradas em execução
+
+1. **O número da edição não é único.** Na listagem real, a edição **538 aparece
+   duas vezes no mesmo dia** — uma "Normal" e uma "Suplemento", com endereços
+   diferentes. Deduplicar por número fundiria as duas e uma sumiria. A chave é o
+   id de `/edicao/{id}`, e há teste travando isso.
+2. **O nome do arquivo PDF não segue a data.** `013_edicao_539_DOM.pdf` está na
+   pasta `07-Julho` e a edição é de **10/07/2026**: o `013` é o décimo terceiro
+   arquivo do mês, não o dia. O endereço é **lido** da página, nunca montado
+   (§8.3) — um padrão deduzido baixaria o diário de outro dia.
+3. **Página sem texto fica registrada.** Um encarte de imagem no meio do diário é
+   um pedaço que **não foi lido**; a afirmação de número de páginas carrega a
+   ressalva com quais páginas foram (§9.3), e a edição vai para
+   `requires_review`.
+
+### Ancoragem da evidência
+
+O texto guardado leva marcas `[pagina N]`. Sem elas, a evidência de um documento
+de 24 páginas seria "está em algum lugar do diário", que não é ancoragem nenhuma.
+O localizador diz página, total, número da edição, tipo, data e o arquivo.
+
+### O que este conector NÃO faz
+
+**Não extrai os atos de dentro da edição.** Portaria, extrato de contrato e
+aditivo são texto corrido no PDF. Transformar isso em afirmação tipada exige um
+extrator de ato testado caso a caso; por regex apressada, produziria "contrato"
+com valor e fornecedor **plausíveis e errados** — o defeito mais caro que este
+produto pode ter.
+
+Então: a edição entra como **documento consultável por busca em texto**, e as
+afirmações são sobre a **edição** (número, data, tipo, número de páginas,
+arquivo), não sobre os atos. Afirmar menos é o que permite afirmar com evidência.
+
+Uma consequência de modelagem: a edição recebeu o tipo de entidade
+`official_publication`, criado para ela (migração 0008). `news_item` faria a
+edição aparecer como notícia na tela — afirmando sobre o município algo que a
+fonte não diz.
+
