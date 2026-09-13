@@ -1,0 +1,50 @@
+# Etapa E1 do 24.2: provar acesso as fontes, de uma maquina com saida de rede.
+#
+# Disparo MANUAL apenas. Nao roda em push nem em agenda, de proposito: coleta e
+# decisao de operacao autorizada (8.1), e uma sondagem que dispara sozinha a
+# cada commit vira trafego repetido em portal de orgao publico sem que ninguem
+# tenha pedido.
+#
+# Permissao de leitura apenas. O relatorio sai no resumo da execucao e como
+# artefato; atualizar `docs/sources/prova-de-acesso.md` continua sendo ato
+# deliberado de quem le o resultado.
+name: Prova de acesso as fontes (E1)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sondar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Sem `npm ci`: a sondagem importa apenas o catalogo e o cliente HTTP, que
+      # dependem so de modulos nativos do Node. Menos peca no caminho entre a
+      # pergunta e a resposta.
+      # UMA sondagem, dois formatos. O relatorio legivel vai para o resumo da
+      # execucao; o JSON da mesma execucao fica no artefato.
+      - name: Sondar as fontes do catalogo
+        # `shell: bash` garante pipefail: sem isso o `tee` mascararia o codigo 1
+        # com que a sondagem sinaliza execucao inconclusiva.
+        shell: bash
+        run: |
+          node --experimental-strip-types scripts/prova-acesso.ts \
+            --json prova-de-acesso.json | tee prova-de-acesso.md
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prova-de-acesso
+          path: |
+            prova-de-acesso.md
+            prova-de-acesso.json
+          retention-days: 30
