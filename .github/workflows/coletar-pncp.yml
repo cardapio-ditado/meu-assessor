@@ -1,0 +1,60 @@
+# Coleta de contratos do PNCP (F06) para a organizacao do piloto.
+#
+# Disparo MANUAL. Nao ha agendador aqui, e o 28.2 e explicito: agendamento
+# descrito nao e agendamento pronto. Quando a coleta tiver de ser recorrente,
+# isso vira um `schedule:` — e ai passa a valer a exigencia do 14.1 de
+# execucoes registradas e comprovadas.
+#
+# Este e o unico workflow com acesso ao banco. Por isso: permissao de leitura
+# no repositorio, segredo entregue por `env` no passo que precisa dele, e
+# nenhuma impressao da string de conexao.
+name: Coletar contratos do PNCP (F06)
+
+on:
+  workflow_dispatch:
+    inputs:
+      de:
+        description: 'Inicio da janela (yyyy-MM-dd)'
+        required: true
+        type: string
+      ate:
+        description: 'Fim da janela (yyyy-MM-dd)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # A coleta fala com o banco, entao precisa do driver.
+      - run: npm ci
+
+      - name: Coletar
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_SSL_NO_VERIFY: '1'
+          DE: ${{ inputs.de }}
+          ATE: ${{ inputs.ate }}
+          INGESTION_ALLOWED_HOSTS: pncp.gov.br
+          DEFAULT_TENANT_SLUG: varzea-grande
+          INGESTION_LOGIN: admin.implantacao
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL nao esta configurada como secret do repositorio." >&2
+            echo "Sem ela a coleta nao tem onde gravar. Settings > Secrets and variables > Actions." >&2
+            exit 1
+          fi
+          node --experimental-strip-types workers/ingestion/src/pncp-contratos.ts \
+            --de "$DE" --ate "$ATE"

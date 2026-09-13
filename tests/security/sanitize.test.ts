@@ -13,7 +13,7 @@ import {
   stripCredentials,
   stripUrlCredentials,
 } from '../../packages/connectors/src/sanitize.ts';
-import { guardUrl } from '../../packages/connectors/src/http.ts';
+import { guardUrl, motivoDoProvedor } from '../../packages/connectors/src/http.ts';
 
 const HOSTS = ['exemplo-portal.test', 'varzeagrande.mt.gov.br'];
 
@@ -138,5 +138,29 @@ describe('T31 - SSRF e allowlist de coleta', () => {
       const verdict = await guardUrl(url, HOSTS);
       assert.equal(verdict.ok, false);
     }
+  });
+});
+
+describe('13.4 - o erro do provedor precisa dizer o motivo', () => {
+  test('o recorte do corpo entra na mensagem, em uma linha', () => {
+    const corpo = '{\n  "message": "dataInicial deve estar no formato yyyyMMdd"\n}';
+    const mensagem = `resposta 400${motivoDoProvedor(corpo)}`;
+    // Sem isto, "resposta 400" e tudo que o autor do conector recebe — e ele
+    // volta a adivinhar o parametro, que e o que 8.3 proibe.
+    assert.match(mensagem, /formato yyyyMMdd/);
+    assert.ok(!mensagem.includes('\n'), 'a mensagem precisa caber em uma linha de log');
+  });
+
+  test('corpo vazio nao suja a mensagem', () => {
+    assert.equal(motivoDoProvedor('   \n  '), '');
+  });
+
+  test('a guarda continua recusando loopback, mesmo com o host na allowlist', async () => {
+    // Este e o motivo de o teste acima nao subir um servidor local: nem para
+    // testar o transporte o loopback e alcancavel (T31). A recusa acontece
+    // ANTES de qualquer requisicao, entao nenhum corpo de erro existe para ler.
+    process.env['INGESTION_ALLOWED_HOSTS'] = '127.0.0.1';
+    const guarda = await guardUrl('http://127.0.0.1:8080/v1/contratos');
+    assert.equal(guarda.ok, false);
   });
 });

@@ -19,6 +19,9 @@
  * Uso:
  *   node --experimental-strip-types scripts/inspecionar-fonte.ts \
  *     --url https://pncp.gov.br/api/consulta/v1/... [--bytes 20000]
+ *
+ * Com `--endpoints`, e a especificacao sendo OpenAPI, imprime so os caminhos e
+ * seus parametros — que e o que se usa para escrever o conector.
  */
 import { SOURCE_CATALOG } from '../packages/connectors/src/catalog.ts';
 import { fetchGuarded } from '../packages/connectors/src/http.ts';
@@ -85,7 +88,50 @@ function forma(valor: unknown, prefixo = '', profundidade = 0): string[] {
   return [`${prefixo}: ${tipo} = ${amostra}`];
 }
 
+/**
+ * Resumo de uma especificacao OpenAPI: cada caminho, o metodo, o resumo e os
+ * parametros com nome, origem, obrigatoriedade e tipo.
+ *
+ * E exatamente o que quem escreve conector precisa, e o que o 8.3 exige que
+ * venha da documentacao em vez de memoria. Imprimir o documento inteiro nao
+ * serve: alem de enterrar a informacao, a linha unica de dezenas de milhares de
+ * caracteres nao sobrevive ao log de execucao.
+ */
+interface ParametroOpenApi {
+  readonly name?: string;
+  readonly in?: string;
+  readonly required?: boolean;
+  readonly schema?: { readonly type?: string; readonly format?: string };
+}
+
+function endpoints(doc: Record<string, unknown>): string[] {
+  const linhas: string[] = [];
+  const servidores = (doc['servers'] as { url?: string }[] | undefined) ?? [];
+  linhas.push(`servidores: ${servidores.map((s) => s.url ?? '?').join(', ') || '(nao declarado)'}`);
+  const caminhos = (doc['paths'] as Record<string, Record<string, unknown>> | undefined) ?? {};
+  for (const [caminho, operacoes] of Object.entries(caminhos)) {
+    for (const [metodo, op] of Object.entries(operacoes)) {
+      const operacao = op as { summary?: string; parameters?: ParametroOpenApi[] };
+      linhas.push('');
+      linhas.push(`${metodo.toUpperCase()} ${caminho}`);
+      if (operacao.summary !== undefined) linhas.push(`  ${operacao.summary}`);
+      for (const par of operacao.parameters ?? []) {
+        const obrigatorio = par.required === true ? 'OBRIGATORIO' : 'opcional';
+        const t = par.schema?.format ?? par.schema?.type ?? '?';
+        linhas.push(`  - ${par.name} (${par.in}, ${obrigatorio}, ${t})`);
+      }
+    }
+  }
+  return linhas;
+}
+
 const tipo = resposta.contentType ?? '';
+if (process.argv.includes('--endpoints') && tipo.includes('json')) {
+  const doc = JSON.parse(corpo) as Record<string, unknown>;
+  process.stdout.write(`## Endpoints declarados\n\n\`\`\`\n${endpoints(doc).join('\n')}\n\`\`\`\n`);
+  process.exit(0);
+}
+
 if (tipo.includes('json')) {
   try {
     const dados: unknown = JSON.parse(corpo);
