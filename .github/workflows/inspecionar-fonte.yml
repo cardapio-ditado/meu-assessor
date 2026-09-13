@@ -1,0 +1,59 @@
+# Olhar para o que uma fonte devolve, antes de escrever conector (8.3: "nao
+# crie um endpoint por adivinhacao").
+#
+# Existe porque o ambiente onde o codigo e escrito nao alcanca os portais, e
+# escrever parser sem ver a resposta real e como adivinhar o endpoint: produz
+# codigo plausivel que falha na primeira execucao de verdade.
+#
+# Nao coleta e nao grava: sem acesso ao banco, sem segredo nenhum. A allowlist
+# vem do catalogo, entao isto nao e um buscador de URL arbitraria dentro do CI.
+name: Inspecionar uma fonte
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Endereco a inspecionar (precisa ser de um dominio do catalogo)'
+        required: true
+        type: string
+      bytes:
+        description: 'Quantos caracteres do corpo imprimir'
+        required: false
+        default: '20000'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  inspecionar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Inspecionar
+        shell: bash
+        # As entradas passam por `env`, nunca interpoladas dentro do comando.
+        # `${{ }}` e substituido ANTES de o shell existir: um endereco com aspas
+        # e `;` viraria comando, e quem dispara nao precisa desse poder para
+        # inspecionar uma pagina.
+        env:
+          URL: ${{ inputs.url }}
+          BYTES: ${{ inputs.bytes }}
+        run: |
+          node --experimental-strip-types scripts/inspecionar-fonte.ts \
+            --url "$URL" --bytes "$BYTES" \
+            | tee inspecao.md
+          cat inspecao.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inspecao
+          path: inspecao.md
+          retention-days: 7
