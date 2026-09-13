@@ -159,6 +159,30 @@ citação falsa.
    ressalva com quais páginas foram (§9.3), e a edição vai para
    `requires_review`.
 
+### O defeito que a primeira coleta revelou
+
+A primeira coleta gravou, no banco, `Diário O昀椀cial` e `o 昀氀uxo` — ligaduras `fi`
+e `fl` viradas ideogramas. **Não é falha do leitor**: o mapa `ToUnicode` gravado
+no arquivo desalinha os bytes UTF-16 da ligadura, e copiar e colar num leitor de
+PDF reproduz o mesmo. O padrão é exato:
+
+| Sai | Codepoint | Byte alto | Era |
+|---|---|---|---|
+| 昀 | U+6600 | `0x66` | `f` |
+| 椀 | U+6900 | `0x69` | `i` |
+| 氀 | U+6C00 | `0x6C` | `l` |
+
+O byte da letra foi parar no byte **alto** de um caractere de 16 bits e o baixo
+ficou zero. O conserto devolve o byte alto, sob regra deliberadamente estreita:
+só quando o byte baixo é zero **e** o alto é letra ASCII. Isso cobre todas as
+ligaduras que existem (fi, fl, ff, ffi, ffl) e não encosta em símbolos legítimos
+que também têm byte baixo zero, como ∀ (U+2200) ou ✀ (U+2700) — consertar demais
+seria trocar um texto errado por outro.
+
+Isto importava mais do que parece: o texto corrompido é **invisível para a
+busca**. Quem procurasse "Diário Oficial" não acharia "Diário O昀椀cial", a tela
+ficaria vazia e ninguém investigaria uma coleta bem-sucedida.
+
 ### Ancoragem da evidência
 
 O texto guardado leva marcas `[pagina N]`. Sem elas, a evidência de um documento
