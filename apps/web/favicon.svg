@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Meu Assessor">
+  <rect width="32" height="32" rx="6" fill="#14496b"/>
+  <path d="M8 22V10l4 7 4-7v12" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 22v-8m0-4v.01" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

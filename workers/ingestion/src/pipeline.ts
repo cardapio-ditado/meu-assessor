@@ -1,0 +1,368 @@
+/**
+ * Pipeline de ingestao (13.1). Etapas independentes e retomaveis:
+ * descobrir -> baixar -> guardar versao -> extrair -> normalizar ->
+ * identificar entidades -> propor fatos -> validar -> publicar ->
+ * atualizar indices -> registrar cobertura.
+ *
+ * Duas regras que o codigo garante:
+ *  - "Um erro de extracao de PDF nao deve obrigar a repetir downloads ja
+ *    concluidos" (13.1): cada etapa grava seu resultado antes da seguinte.
+ *  - "A repeticao do mesmo lote nao deve criar novo contrato, novo pagamento ou
+ *    nova noticia" (13.3): upsert por chave estavel, com nova VERSAO somente
+ *    quando o hash do conteudo muda (T38).
+ */
+import { createHash } from 'node:crypto';
+import type { QueryRunner } from '../../../packages/db/src/pool.ts';
+import { detectInjection, stripCredentials } from '../../../packages/connectors/src/sanitize.ts';
+import type { AuthorizedContext } from '../../../packages/domain/src/types.ts';
+
+export interface RawRecord {
+  readonly externalId: string;
+  readonly documentType: string | null;
+  readonly title: string;
+  readonly issuingOrgan: string | null;
+  readonly numberOriginal: string | null;
+  readonly fiscalYear: number | null;
+  readonly urlOriginal: string | null;
+  readonly urlFinal: string | null;
+  readonly publicationDate: string | null;
+  readonly signatureDate: string | null;
+  readonly referenceDate: string | null;
+  readonly mimeType: string | null;
+  readonly textContent: string;
+  readonly extractionMethod: 'native_text' | 'structured' | 'html' | 'ocr' | 'manual';
+  readonly extractionQuality: 'high' | 'uncertain' | 'requires_review';
+  readonly queryParameters: Readonly<Record<string, string>> | null;
+  readonly isSynthetic: boolean;
+}
+
+export interface IngestOutcome {
+  readonly datasetId: string;
+  readonly runId: string;
+  readonly inserted: number;
+  readonly newVersions: number;
+  readonly unchanged: number;
+  readonly quarantined: number;
+  readonly injectionFindings: number;
+  readonly outcome: 'success' | 'partial' | 'failed' | 'quarantined';
+}
+
+export function normalizeTitle(title: string): string {
+  return title
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function normalizeNumber(value: string | null): string | null {
+  if (value === null) return null;
+  // Preserva zeros a esquerda do original em outra coluna; aqui so a forma
+  // comparavel (A.2: "texto original e forma normalizada").
+  const cleaned = value.replace(/\s+/g, '').toUpperCase();
+  const m = /^0*(\d+)\/(\d{4})$/.exec(cleaned);
+  return m === null ? cleaned : `${m[1]}/${m[2]}`;
+}
+
+export function contentHash(record: RawRecord): string {
+  return createHash('sha256')
+    .update(
+      [
+        record.externalId,
+        record.title,
+        record.publicationDate ?? '',
+        record.numberOriginal ?? '',
+        record.textContent,
+      // Separador NUL escrito como escape, nao como byte literal: um byte NUL
+      // no fonte faz o git tratar o arquivo como binario. NUL e melhor que
+      // espaco aqui porque nao pode aparecer dentro de nenhum campo, evitando
+      // que ("a b", "") e ("a", "b") produzam o mesmo hash.
+      ].join('\u0000'),
+    )
+    .digest('hex');
+}
+
+/**
+ * Grava um lote. Upsert por (tenant, source, external_id):
+ *  - hash igual  -> nada muda (idempotencia, T38)
+ *  - hash novo   -> nova record_version apontando para a anterior via
+ *                   supersedes_id, sem apagar a versao antiga (7.8, 12.5)
+ */
+export async function ingestBatch(
+  db: QueryRunner,
+  context: AuthorizedContext,
+  params: {
+    readonly sourceCode: string;
+    readonly datasetName: string;
+    readonly requestedFrom: string | null;
+    readonly requestedTo: string | null;
+    readonly records: readonly RawRecord[];
+    readonly parserVersion: string;
+    readonly expectedCount?: number | null;
+  },
+): Promise<IngestOutcome> {
+  const dataset = await db.query<{ dataset_id: string; source_id: string }>(
+    `select sd.id as dataset_id, s.id as source_id
+       from ma.source_datasets sd
+       join ma.sources s on s.id = sd.source_id
+      where s.code = $1 and sd.name = $2`,
+    [params.sourceCode, params.datasetName],
+  );
+  const found = dataset.rows[0];
+  if (found === undefined) {
+    throw new Error(`conjunto de dados ${params.sourceCode}/${params.datasetName} nao cadastrado`);
+  }
+
+  const run = await db.query<{ id: string }>(
+    `insert into ma.source_runs (tenant_id, dataset_id, requested_from, requested_to, expected_count)
+     values ($1, $2, $3, $4, $5) returning id`,
+    [context.tenantId, found.dataset_id, params.requestedFrom, params.requestedTo, params.expectedCount ?? null],
+  );
+  const runId = run.rows[0]?.id;
+  if (runId === undefined) throw new Error('falha ao registrar execucao de coleta');
+
+  await db.query(`update ma.source_datasets set last_attempt_at = now() where id = $1`, [found.dataset_id]);
+
+  let inserted = 0;
+  let newVersions = 0;
+  let unchanged = 0;
+  let quarantined = 0;
+  let injectionFindings = 0;
+  let foundFrom: string | null = null;
+  let foundTo: string | null = null;
+
+  for (const record of params.records) {
+    // 20.4: conteudo com instrucao embutida vai para quarentena e auditoria,
+    // sem nunca ser interpretado como ordem.
+    const findings = detectInjection(record.textContent);
+    if (findings.length > 0) {
+      injectionFindings += findings.length;
+      await db.query(
+        `insert into ma.audit_log (tenant_id, actor, action, object_kind, object_id, detail)
+         values ($1, 'ingestion', 'injection_detected', 'raw_record', $2, $3)`,
+        [context.tenantId, record.externalId, JSON.stringify({ findings, sourceCode: params.sourceCode })],
+      );
+      await db.query(
+        `insert into ma.review_queue (tenant_id, kind, reason, impact, original_extraction, evidence_ids, priority)
+         values ($1, 'conflict', $2, 'high_risk_field', $3, '{}', 90)`,
+        [
+          context.tenantId,
+          `conteudo com instrucao embutida em ${params.sourceCode}/${record.externalId}: quarentena antes de extrair fatos`,
+          JSON.stringify({ externalId: record.externalId, findings }),
+        ],
+      );
+      quarantined += 1;
+      continue;
+    }
+
+    const hash = contentHash(record);
+    const existing = await db.query<{ id: string; content_hash: string; record_version: number }>(
+      `select id, content_hash, record_version
+         from ma.document_versions
+        where tenant_id = $1 and source_id = $2 and external_id = $3
+        order by record_version desc limit 1`,
+      [context.tenantId, found.source_id, record.externalId],
+    );
+    const previous = existing.rows[0];
+
+    if (previous !== undefined && previous.content_hash === hash) {
+      unchanged += 1;
+    } else {
+      const version = previous === undefined ? 1 : previous.record_version + 1;
+      await db.query(
+        `insert into ma.document_versions
+           (tenant_id, source_id, external_id, document_type, title_original, title_normalized,
+            issuing_organ, number_original, number_normalized, fiscal_year, url_original, url_final,
+            publication_date, signature_date, reference_date, mime_type, content_hash,
+            extraction_method, parser_version, text_content, extraction_quality,
+            record_version, supersedes_id, is_synthetic)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)`,
+        [
+          context.tenantId,
+          found.source_id,
+          record.externalId,
+          record.documentType,
+          record.title,
+          normalizeTitle(record.title),
+          record.issuingOrgan,
+          record.numberOriginal,
+          normalizeNumber(record.numberOriginal),
+          record.fiscalYear,
+          record.urlOriginal,
+          record.urlFinal,
+          record.publicationDate,
+          record.signatureDate,
+          record.referenceDate,
+          record.mimeType,
+          hash,
+          record.extractionMethod,
+          params.parserVersion,
+          record.textContent,
+          record.extractionQuality,
+          version,
+          previous?.id ?? null,
+          record.isSynthetic,
+        ],
+      );
+      if (previous === undefined) inserted += 1;
+      else newVersions += 1;
+
+      // 12.5: nova versao invalida o cache dependente de QUALQUER versao
+      // anterior deste documento, nao apenas da imediatamente anterior. Uma
+      // resposta em cache montada sobre a versao 1 fica igualmente errada
+      // quando chega a versao 3.
+      if (previous !== undefined) {
+        const lineage = await db.query<{ id: string }>(
+          `select id from ma.document_versions
+            where tenant_id = $1 and source_id = $2 and external_id = $3`,
+          [context.tenantId, found.source_id, record.externalId],
+        );
+        const ids = lineage.rows.map((r) => r.id);
+        if (ids.length > 0) {
+          await db.query(
+            `delete from ma.answer_cache where depends_on_document_ids && $1::uuid[]`,
+            [ids],
+          );
+        }
+      }
+    }
+
+    if (record.publicationDate !== null) {
+      if (foundFrom === null || record.publicationDate < foundFrom) foundFrom = record.publicationDate;
+      if (foundTo === null || record.publicationDate > foundTo) foundTo = record.publicationDate;
+    }
+    if (record.queryParameters !== null) {
+      // Nunca persistir credenciais junto da evidencia (12.1).
+      stripCredentials(record.queryParameters);
+    }
+  }
+
+  const outcome: IngestOutcome['outcome'] =
+    quarantined > 0 && quarantined === params.records.length
+      ? 'quarantined'
+      : quarantined > 0
+        ? 'partial'
+        : 'success';
+
+  await db.query(
+    `update ma.source_runs
+        set finished_at = now(), outcome = $2, found_from = $3, found_to = $4,
+            obtained_count = $5, rejected_count = $6
+      where id = $1`,
+    [runId, outcome, foundFrom, foundTo, inserted + newVersions + unchanged, quarantined],
+  );
+
+  // 14.4 / 13.4: "sem novidades" exige coleta bem-sucedida. last_success_at so
+  // avanca quando a execucao nao foi um fracasso.
+  if (outcome === 'success' || outcome === 'partial') {
+    await db.query(`update ma.source_datasets set last_success_at = now() where id = $1`, [found.dataset_id]);
+  }
+
+  // 9.3: matriz de cobertura verificavel, com intervalo pedido x encontrado.
+  await db.query(
+    `insert into ma.coverage_matrix
+       (tenant_id, dataset_id, requested_from, requested_to, found_from, found_to,
+        temporal_coverage, record_count, failure_count, field_coverage, last_verified_at, verified_by)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now(), 'ingestion')
+     on conflict (dataset_id, requested_from, requested_to) do update
+        set found_from = excluded.found_from,
+            found_to = excluded.found_to,
+            temporal_coverage = excluded.temporal_coverage,
+            record_count = excluded.record_count,
+            failure_count = excluded.failure_count,
+            field_coverage = excluded.field_coverage,
+            last_verified_at = now()`,
+    [
+      context.tenantId,
+      found.dataset_id,
+      params.requestedFrom,
+      params.requestedTo,
+      foundFrom,
+      foundTo,
+      // "Completo" so se refere a um universo demonstravel (9.3). Sem contagem
+      // esperada do provedor, a cobertura e 'partial', nunca 'complete'.
+      params.expectedCount != null && params.expectedCount === params.records.length
+        ? 'complete_per_provider'
+        : 'partial',
+      inserted + newVersions + unchanged,
+      quarantined,
+      JSON.stringify(fieldCoverage(params.records)),
+    ],
+  );
+
+  return {
+    datasetId: found.dataset_id,
+    runId,
+    inserted,
+    newVersions,
+    unchanged,
+    quarantined,
+    injectionFindings,
+    outcome,
+  };
+}
+
+/** 9.3: percentual de registros com data, numero e texto utilizavel. */
+export function fieldCoverage(records: readonly RawRecord[]): Record<string, number> {
+  if (records.length === 0) return {};
+  const total = records.length;
+  const count = (predicate: (r: RawRecord) => boolean): number =>
+    Math.round((records.filter(predicate).length / total) * 100);
+  return {
+    publication_date: count((r) => r.publicationDate !== null),
+    number: count((r) => r.numberOriginal !== null),
+    usable_text: count((r) => r.textContent.trim().length > 40),
+    native_text: count((r) => r.extractionMethod === 'native_text' || r.extractionMethod === 'structured'),
+  };
+}
+
+/**
+ * 13.4 / T27: "Uma resposta HTTP bem-sucedida com tabela vazia pode indicar
+ * filtro quebrado ou erro de aplicacao. Testar conteudo, nao somente codigo
+ * HTTP."
+ */
+export interface EmptyBatchVerdict {
+  readonly suspicious: boolean;
+  readonly reason: string;
+}
+
+export function assessEmptyBatch(params: {
+  readonly obtained: number;
+  readonly expectedCount: number | null;
+  readonly previousTypicalCount: number | null;
+  readonly requestedDays: number;
+}): EmptyBatchVerdict {
+  if (params.obtained > 0) {
+    if (params.expectedCount !== null && params.obtained < params.expectedCount) {
+      return {
+        suspicious: true,
+        reason: `provedor declarou ${params.expectedCount} registros e foram obtidos ${params.obtained}`,
+      };
+    }
+    if (
+      params.previousTypicalCount !== null &&
+      params.previousTypicalCount >= 10 &&
+      params.obtained < params.previousTypicalCount * 0.2
+    ) {
+      return {
+        suspicious: true,
+        reason: `queda abrupta: ${params.obtained} contra media anterior de ${params.previousTypicalCount}`,
+      };
+    }
+    return { suspicious: false, reason: 'contagem compativel' };
+  }
+  if (params.expectedCount !== null && params.expectedCount > 0) {
+    return { suspicious: true, reason: 'provedor declarou registros e a resposta veio vazia' };
+  }
+  if (params.previousTypicalCount !== null && params.previousTypicalCount > 0) {
+    return {
+      suspicious: true,
+      reason: `conjunto historicamente traz ~${params.previousTypicalCount} registros e veio vazio`,
+    };
+  }
+  if (params.requestedDays >= 30) {
+    return { suspicious: true, reason: 'janela de 30 dias ou mais sem nenhum registro' };
+  }
+  return { suspicious: false, reason: 'janela curta sem registros: plausivel' };
+}

@@ -1,2 +1,14 @@
-assets/originais
-ferramentas-og.py
+# Sintaxe de gitignore: um padrao SEM barra inicial casa qualquer diretorio com
+# aquele nome em QUALQUER profundidade. `db/` excluiria tambem `packages/db/`,
+# que carrega o acesso ao banco — foi exatamente o que derrubou o primeiro
+# build. Todos os padroes aqui sao ancorados na raiz de proposito.
+/fixtures/
+/tests/
+/docs/
+/db/
+/prompts/
+/scripts/demo.ts
+/.env
+/.env.*
+!/.env.example
+/.vercel/
