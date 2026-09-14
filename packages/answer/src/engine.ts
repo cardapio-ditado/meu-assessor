@@ -130,7 +130,7 @@ function documentMatches(
       prove: evidenceIds,
     },
     dataVersion,
-    sourceCheckedAt,
+    sourceCheckedAt: sourceCheckedAt as AnswerEnvelope['sourceCheckedAt'],
     evidenceReferenceAt: dated.at(-1) ?? null,
     researchJobId: null,
   };
