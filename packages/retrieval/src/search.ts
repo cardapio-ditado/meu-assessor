@@ -198,10 +198,10 @@ export async function searchEntities(
 
   // 5. Trigrama: ultimo recurso, para grafia aproximada de nome local.
   const trigram = await db.query<RawEntityRow & { sim: number }>(
-    `select ${ENTITY_COLS}, similarity(e.name_normalized, $2) as sim
+    `select ${ENTITY_COLS}, similarity(e.name_normalized, $2::text) as sim
        ${ENTITY_FROM}
       where ($1::text[] is null or e.kind::text = any($1))
-        and e.name_normalized % $2
+        and e.name_normalized % $2::text
       order by sim desc
       limit $3`,
     [kindFilter, normalized, limit],
