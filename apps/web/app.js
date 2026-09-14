@@ -62,19 +62,60 @@ function fill(listId, items, blockId) {
 const STATUS_LABEL = {
   complete: 'Documentado',
   partial: 'Resposta parcial',
-  clarification_needed: 'Precisa de um esclarecimento',
-  no_evidence: 'Sem evidencia localizada',
-  unavailable: 'Servico indisponivel',
+  clarification_needed: 'Precisamos confirmar',
+  no_evidence: 'Sem evidência localizada',
+  unavailable: 'Serviço indisponível',
 };
 
 const ESTADO_LABEL = {
   documented: 'Documentado',
   source_reported: 'Informado pela fonte',
   partial: 'Parcial',
-  divergent: 'Divergencia',
-  not_located: 'Nao localizado',
+  divergent: 'Divergência',
+  not_located: 'Não localizado',
   stale_for_question: 'Desatualizado para esta pergunta',
 };
+
+const INTEGRACAO_LABEL = {
+  page_located: 'Fonte localizada',
+  access_probed: 'Acesso verificado',
+  connector_built: 'Conector preparado',
+  connector_verified: 'Integração verificada',
+  blocked: 'Acesso bloqueado',
+};
+
+const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+
+function formatDate(value) {
+  if (!value) return 'data não informada';
+  const date = new Date(String(value).slice(0, 10) + 'T12:00:00');
+  if (Number.isNaN(date.getTime())) return String(value);
+  return dateFormatter.format(date).replace('.', '');
+}
+
+function formatDateTime(value) {
+  if (!value) return 'nunca';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date).replace('.', '');
+}
+
+function formatPeriod(value) {
+  return String(value).replace(
+    /(\d{4}-\d{2}-\d{2})\s+a\s+(\d{4}-\d{2}-\d{2})/,
+    (_, from, to) => `${formatDate(from)} a ${formatDate(to)}`,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Acesso
@@ -90,7 +131,7 @@ el('form-acesso').addEventListener('submit', async (event) => {
   });
   if (!result.ok) {
     // 7.2: a mensagem nao revela se a conta existe.
-    erro.textContent = result.body?.error ?? 'nao foi possivel entrar';
+    erro.textContent = result.body?.error ?? 'Não foi possível entrar.';
     erro.hidden = false;
     return;
   }
@@ -121,10 +162,10 @@ async function boot() {
   el('sair').hidden = false;
   el('barra').hidden = false;
   el('saudacao').textContent =
-    `${me.body.municipality} - dados consultados no fuso ${me.body.timeZone}. Hoje: ${me.body.today}.`;
+    `${me.body.municipality} · referência de hoje: ${formatDate(me.body.today)}`;
   el('rodape-aviso').textContent =
-    'Ambiente de demonstracao. O conteudo carregado e ficticio e identificado como tal. ' +
-    'Nenhum conector de fonte publica esta habilitado.';
+    'Ambiente de demonstração. O conteúdo fictício é identificado nas respostas. ' +
+    'Nenhuma fonte pública está sendo coletada automaticamente.';
   show('tela-inicio');
   await loadHome();
 }
@@ -141,8 +182,8 @@ async function loadHome() {
     p.className = 'ajuda';
     // 7.5: tela vazia nao e prova de inexistencia de acoes.
     p.textContent =
-      `Nenhum fato registrado entre ${home.body.period.from} e ${home.body.period.to}. ` +
-      'Isso descreve o recorte carregado, nao a ausencia de acoes na administracao.';
+      `Nenhuma movimentação registrada entre ${formatDate(home.body.period.from)} e ${formatDate(home.body.period.to)}. ` +
+      'Isso descreve apenas o conteúdo disponível, não significa ausência de ações da gestão.';
     cartoes.appendChild(p);
   }
   for (const card of home.body.cards) {
@@ -159,12 +200,14 @@ async function loadHome() {
     meta.className = 'cartao-meta';
     // 6.3: data do evento separada da data de publicacao.
     const partes = [
-      card.area ?? 'sem area',
-      `evento: ${card.factDate ?? 'data nao informada'}`,
-      `publicacao: ${card.publicationDate ?? 'nao informada'}`,
+      card.area ?? 'Área não informada',
+      `Aconteceu em ${formatDate(card.factDate)}`,
       ESTADO_LABEL[card.state] ?? card.state,
     ];
-    if (card.isSynthetic) partes.push('registro ficticio');
+    if (card.publicationDate && card.publicationDate !== card.factDate) {
+      partes.push(`Publicado em ${formatDate(card.publicationDate)}`);
+    }
+    if (card.isSynthetic) partes.push('Dado fictício');
     meta.textContent = partes.join(' | ');
     button.appendChild(meta);
 
@@ -179,7 +222,7 @@ async function loadHome() {
   clear(cobertura);
   const table = document.createElement('table');
   const head = document.createElement('tr');
-  for (const h of ['Fonte', 'Conjunto', 'Integracao', 'Ultima coleta com exito']) {
+  for (const h of ['Fonte', 'Conjunto de dados', 'Situação', 'Última atualização']) {
     const th = document.createElement('th');
     th.textContent = h;
     head.appendChild(th);
@@ -187,13 +230,17 @@ async function loadHome() {
   table.appendChild(head);
   for (const row of home.body.coverage) {
     const tr = document.createElement('tr');
-    for (const value of [row.sourceCode, row.datasetName, row.integrationStatus]) {
+    for (const value of [
+      row.sourceCode,
+      row.datasetName,
+      INTEGRACAO_LABEL[row.integrationStatus] ?? row.integrationStatus,
+    ]) {
       const td = document.createElement('td');
       td.textContent = value;
       tr.appendChild(td);
     }
     const td = document.createElement('td');
-    td.textContent = row.lastSuccessAt ? row.lastSuccessAt.slice(0, 16) : 'nunca';
+    td.textContent = formatDateTime(row.lastSuccessAt);
     if (row.stale) td.className = 'defasado';
     tr.appendChild(td);
     table.appendChild(tr);
@@ -210,6 +257,14 @@ el('form-pergunta').addEventListener('submit', (event) => {
   void submitQuestion();
 });
 
+for (const button of document.querySelectorAll('[data-pergunta-sugerida]')) {
+  button.addEventListener('click', () => {
+    const question = button.dataset.perguntaSugerida ?? '';
+    el('pergunta').value = question;
+    void submitQuestion(question);
+  });
+}
+
 el('voltar').addEventListener('click', () => {
   if (state.abort !== null) state.abort.abort();
   show('tela-inicio');
@@ -224,14 +279,14 @@ async function submitQuestion(text) {
   el('resposta').hidden = true;
 
   const estado = el('estado-consulta');
-  estado.textContent = 'Consultando a base...';
+  estado.textContent = 'Consultando documentos e organizando a resposta...';
 
   // 7.4 / 16.1: limite da interacao sincrona, com saida para o usuario.
   const controller = new AbortController();
   state.abort = controller;
   const limite = setTimeout(() => {
     estado.textContent =
-      'A consulta esta demorando mais que o previsto. Voce pode esperar ou voltar e refazer a pergunta com um recorte menor.';
+      'A consulta está demorando mais que o previsto. Você pode esperar ou voltar e fazer uma pergunta mais específica.';
   }, 12_000);
 
   const result = await api('/v1/questions', {
@@ -247,8 +302,8 @@ async function submitQuestion(text) {
     // 16.5: indisponibilidade nao vira resposta inventada.
     estado.textContent =
       result.status === 401
-        ? 'Sua sessao expirou. Entre novamente.'
-        : 'Nao foi possivel consultar agora. A base nao foi alterada e nenhuma resposta foi gerada.';
+        ? 'Sua sessão expirou. Entre novamente.'
+        : 'Não foi possível consultar agora. Nenhuma resposta foi gerada e a base não foi alterada.';
     if (result.status === 401) show('tela-acesso');
     return;
   }
@@ -263,12 +318,11 @@ function render(envelope) {
 
   el('selo-status').textContent = STATUS_LABEL[envelope.status] ?? envelope.status;
   el('selo-periodo').textContent =
-    `Periodo: ${envelope.context.period}${envelope.plan?.periodIsDefault ? ' (padrao)' : ''}`;
-  // 14.2 / 7.4: "Dados consultados ate..." nunca sugere fiscalizacao no momento
-  // da leitura.
+    `Período: ${formatPeriod(envelope.context.period)}${envelope.plan?.periodIsDefault ? ' (padrão)' : ''}`;
+  // A data informa o limite da base sem sugerir acompanhamento em tempo real.
   el('selo-dados').textContent = envelope.sourceCheckedAt
-    ? `Fontes verificadas ate ${String(envelope.sourceCheckedAt).slice(0, 16)}`
-    : 'Nenhuma coleta automatica registrada';
+    ? `Fontes verificadas até ${formatDateTime(envelope.sourceCheckedAt)}`
+    : 'Sem coleta automática';
 
   // Camada 1
   el('camada-breve').textContent = envelope.layers.brief;
@@ -309,8 +363,8 @@ function render(envelope) {
     meta.className = 'fato-meta';
     meta.textContent = [
       ESTADO_LABEL[fact.state] ?? fact.state,
-      `data do fato: ${fact.factDate ?? 'nao informada'}`,
-      `${fact.evidenceIds.length} evidencia(s)`,
+      `Data do fato: ${formatDate(fact.factDate)}`,
+      `${fact.evidenceIds.length} evidência(s)`,
     ].join(' | ');
     dd.appendChild(meta);
     wrap.appendChild(dt);
@@ -331,7 +385,7 @@ function render(envelope) {
     const datas = document.createElement('div');
     datas.className = 'datas';
     datas.textContent =
-      `fato: ${item.factDate ?? 'nao informado'} | publicado: ${item.publicationDate ?? 'nao informado'} | ${item.relationNature}`;
+      `Fato: ${formatDate(item.factDate)} · Publicado: ${formatDate(item.publicationDate)} · ${item.relationNature}`;
     const titulo = document.createElement('div');
     titulo.textContent = item.title;
     li.appendChild(datas);
@@ -344,15 +398,22 @@ function render(envelope) {
   const comprove = el('camada-comprove');
   clear(comprove);
   el('bloco-comprove').hidden = envelope.layers.prove.length === 0;
-  for (const id of envelope.layers.prove) {
+  for (const [index, id] of envelope.layers.prove.entries()) {
     const box = document.createElement('div');
     box.className = 'evidencia';
-    const carregando = document.createElement('p');
-    carregando.className = 'ajuda';
-    carregando.textContent = 'carregando trecho...';
-    box.appendChild(carregando);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secundario';
+    button.textContent = `Ver documento ${index + 1}`;
+    button.addEventListener('click', () => {
+      button.disabled = true;
+      button.textContent = 'Carregando documento...';
+      void loadEvidence(id, box);
+    }, { once: true });
+
+    box.appendChild(button);
     comprove.appendChild(box);
-    void loadEvidence(id, box);
   }
 
   // Verificacao
@@ -361,10 +422,10 @@ function render(envelope) {
     el('bloco-validador').hidden = false;
     el('validador-texto').textContent =
       validador.verdict === 'reduced'
-        ? `A resposta foi reduzida ao que as evidencias sustentam: ${validador.removed} afirmacao(oes) bloqueada(s) na verificacao.`
+        ? `A resposta foi limitada ao que os documentos sustentam. ${validador.removed} afirmação(ões) foram removidas.`
         : validador.verdict === 'abstained'
-          ? 'A verificacao nao encontrou suporte suficiente e o sistema se absteve de responder.'
-          : 'Todas as afirmacoes candidatas foram bloqueadas na verificacao. Nada foi afirmado.';
+          ? 'Não encontramos suporte documental suficiente para responder com segurança.'
+          : 'As informações encontradas não passaram pela verificação. Nada foi afirmado como verdadeiro.';
   } else {
     el('bloco-validador').hidden = true;
   }
@@ -381,7 +442,7 @@ async function loadEvidence(id, box) {
     const p = document.createElement('p');
     p.className = 'erro';
     // 7.8: link quebrado nao apaga o registro nem permite fingir acesso.
-    p.textContent = 'Este trecho nao esta acessivel nesta sessao.';
+    p.textContent = 'Este documento não está acessível nesta sessão.';
     box.appendChild(p);
     return;
   }
@@ -401,12 +462,12 @@ async function loadEvidence(id, box) {
   const partes = [
     `fonte ${doc?.source_code ?? '?'}`,
     evidence.locator,
-    `publicado: ${doc?.publication_date ?? 'nao informado'}`,
-    `coletado: ${doc?.collected_at?.slice(0, 16) ?? 'nao informado'}`,
-    `versao ${doc?.record_version ?? '?'}`,
-    `extracao: ${doc?.extraction_method ?? '?'}`,
+    `Publicado: ${formatDate(doc?.publication_date)}`,
+    `Coletado: ${formatDateTime(doc?.collected_at)}`,
+    `Versão ${doc?.record_version ?? '?'}`,
+    `Extração: ${doc?.extraction_method ?? '?'}`,
   ];
-  if (doc?.is_synthetic) partes.push('DOCUMENTO FICTICIO');
+  if (doc?.is_synthetic) partes.push('DOCUMENTO FICTÍCIO');
   meta.textContent = partes.join(' | ');
   box.appendChild(meta);
 
@@ -420,7 +481,7 @@ async function loadEvidence(id, box) {
     link.href = doc.url_original;
     link.rel = 'noreferrer noopener';
     link.target = '_blank';
-    link.textContent = 'Abrir o original';
+    link.textContent = 'Abrir documento original ↗';
     box.appendChild(link);
   }
 }
@@ -439,7 +500,7 @@ el('form-erro').addEventListener('submit', async (event) => {
   });
   el('erro-enviado').textContent = result.ok
     ? result.body.notice
-    : 'Nao foi possivel registrar o relato agora.';
+    : 'Não foi possível registrar o relato agora.';
   if (result.ok) el('nota-erro').value = '';
 });
 
@@ -460,7 +521,7 @@ if (typeof navigator.mediaDevices?.getUserMedia !== 'function' || typeof window.
   // dizer isso, em vez de exibir um botao que nao funciona.
   gravar.disabled = true;
   gravar.hidden = true;
-  estadoVoz.textContent = 'Este navegador nao permite gravacao. Use o campo de texto.';
+  estadoVoz.textContent = 'Este navegador não permite gravação. Use o campo de texto.';
 }
 
 gravar.addEventListener('click', async () => {
@@ -486,7 +547,7 @@ gravar.addEventListener('click', async () => {
     stopTimer = setTimeout(stopRecording, MAX_SECONDS * 1000);
   } catch {
     estadoVoz.textContent =
-      'Permissao de microfone nao concedida. Voce pode digitar a pergunta no campo acima.';
+      'Permissão de microfone não concedida. Você pode digitar a pergunta.';
   }
 });
 
@@ -501,10 +562,10 @@ function stopRecording() {
 
 async function sendAudio() {
   if (chunks.length === 0) {
-    estadoVoz.textContent = 'Nao foi captado audio. Tente novamente ou digite a pergunta.';
+    estadoVoz.textContent = 'Não foi captado áudio. Tente novamente ou digite a pergunta.';
     return;
   }
-  estadoVoz.textContent = 'Enviando audio para transcricao...';
+  estadoVoz.textContent = 'Enviando áudio para transcrição...';
   const blob = new Blob(chunks, { type: chunks[0].type || 'audio/webm' });
   const response = await fetch('/v1/transcriptions', {
     method: 'POST',
@@ -514,20 +575,20 @@ async function sendAudio() {
   }).catch(() => null);
 
   if (response === null) {
-    estadoVoz.textContent = 'Nao foi possivel enviar o audio agora. Use o campo de texto.';
+    estadoVoz.textContent = 'Não foi possível enviar o áudio agora. Use o campo de texto.';
     return;
   }
   const body = await response.json().catch(() => null);
   if (!response.ok) {
     // 28.2: nao simular sucesso. O produto diz que a transcricao nao existe
     // neste ambiente e mantem o caminho por texto.
-    estadoVoz.textContent = body?.notice ?? 'Transcricao indisponivel. Use o campo de texto.';
+    estadoVoz.textContent = body?.notice ?? 'Transcrição indisponível. Use o campo de texto.';
     return;
   }
   // Quando houver provedor: preencher o campo e deixar o usuario REVISAR
   // antes de consultar (19.1), nunca consultar direto.
   el('pergunta').value = body.transcript ?? '';
-  estadoVoz.textContent = 'Revise a transcricao no campo acima e toque em Perguntar.';
+  estadoVoz.textContent = 'Revise a transcrição e toque em Consultar.';
   el('pergunta').focus();
 }
 
