@@ -87,6 +87,24 @@ export async function currentDataVersion(db: QueryRunner): Promise<string> {
 }
 
 
+function preferredDocumentTypes(question: string): readonly string[] | null {
+  const normalized = question
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+
+  if (/\b(contrato|contratos|aditivo|aditivos)\b/.test(normalized)) {
+    return ['contract'];
+  }
+  if (/\b(emenda|emendas|repasse|repasses|transferencia|transferencias|convenio|convenios)\b/.test(normalized)) {
+    return ['transfer_instrument'];
+  }
+  if (/\b(diario|edital|licitacao|decreto|portaria|publicacao)\b/.test(normalized)) {
+    return ['official_gazette'];
+  }
+  return null;
+}
+
 function documentMatches(
   plan: QueryPlan,
   municipality: string,
@@ -201,7 +219,18 @@ export async function ask(
   // ignorava a busca documental que ja existia. Agora o acervo e consultado e
   // devolvido como lista rastreavel, sem inventar uma sintese factual.
   if (resolution.kind === 'not_found') {
-    const hits = await searchDocuments(db, interpretation.searchQuery, { period: plan.period, limit: 10 });
+    const documentTypes = preferredDocumentTypes(question);
+    let hits = await searchDocuments(db, interpretation.searchQuery, {
+      period: plan.period,
+      limit: 10,
+      documentTypes,
+    });
+    if (hits.length === 0 && documentTypes !== null) {
+      hits = await searchDocuments(db, interpretation.searchQuery, {
+        period: plan.period,
+        limit: 10,
+      });
+    }
     if (hits.length > 0) {
       const sourceCheckedAt = await getLastSuccessfulCollection(db);
       const synthesis = await synthesizeDocumentAnswer(
