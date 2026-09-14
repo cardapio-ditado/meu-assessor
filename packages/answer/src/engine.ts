@@ -93,7 +93,7 @@ function documentMatches(
   const evidenceIds = [...new Set(hits.flatMap((hit) => hit.evidenceIds))];
   const dated = hits
     .map((hit) => hit.publicationDate)
-    .filter((date): date is string => date !== null)
+    .filter((date): date is NonNullable<DocumentHit['publicationDate']> => date !== null)
     .sort();
 
   return {
