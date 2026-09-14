@@ -4,6 +4,7 @@
  * testes possam falhar em um ponto especifico.
  */
 import { createHash, randomUUID } from 'node:crypto';
+import { interpretQuestion } from '../../ai/src/gemini.ts';
 import type { QueryRunner } from '../../db/src/pool.ts';
 import { accessSignature } from '../../db/src/auth.ts';
 import {
@@ -146,6 +147,7 @@ export async function ask(
 ): Promise<AskResult> {
   const startedAt = performance.now();
   const plan = planQuestion(question, context);
+  const interpretation = await interpretQuestion(question);
   const today = todayIn(context.timeZone);
   const dataVersion = await currentDataVersion(db);
   const periodText = `${plan.period.from} a ${plan.period.to}`;
@@ -162,7 +164,7 @@ export async function ask(
     );
   }
 
-  const candidates = await searchEntities(db, context, plan.rawQuestion, { kinds: plan.entityKinds });
+  const candidates = await searchEntities(db, context, interpretation.searchQuery, { kinds: plan.entityKinds });
   const resolution = resolveOne(candidates);
 
   // T02 / 6.1: nao escolher silenciosamente a primeira entre candidatos.
@@ -186,7 +188,7 @@ export async function ask(
   // ignorava a busca documental que ja existia. Agora o acervo e consultado e
   // devolvido como lista rastreavel, sem inventar uma sintese factual.
   if (resolution.kind === 'not_found') {
-    const hits = await searchDocuments(db, plan.rawQuestion, { period: plan.period, limit: 10 });
+    const hits = await searchDocuments(db, interpretation.searchQuery, { period: plan.period, limit: 10 });
     if (hits.length > 0) {
       const sourceCheckedAt = await getLastSuccessfulCollection(db);
       return finish(
