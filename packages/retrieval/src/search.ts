@@ -10,7 +10,7 @@
  */
 import type { QueryRunner } from '../../db/src/pool.ts';
 import type { AuthorizedContext, EntityKind } from '../../domain/src/types.ts';
-import type { DateRange } from '../../domain/src/temporal.ts';
+import { plainDate, type DateRange, type PlainDate } from '../../domain/src/temporal.ts';
 
 export interface EntityCandidate {
   readonly id: string;
@@ -274,7 +274,7 @@ export interface DocumentHit {
   readonly documentVersionId: string;
   readonly title: string;
   readonly sourceCode: string;
-  readonly publicationDate: string | null;
+  readonly publicationDate: PlainDate | null;
   readonly snippet: string;
   readonly rank: number;
   readonly isSynthetic: boolean;
@@ -325,7 +325,7 @@ export async function searchDocuments(
     documentVersionId: r.id,
     title: r.title_original,
     sourceCode: r.code,
-    publicationDate: r.publication_date,
+    publicationDate: r.publication_date === null ? null : plainDate(r.publication_date),
     snippet: r.snippet,
     rank: Number(r.rank),
     isSynthetic: r.is_synthetic,
