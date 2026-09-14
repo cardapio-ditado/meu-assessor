@@ -303,7 +303,7 @@ export async function searchDocuments(
     `select d.id, d.title_original, s.code, d.publication_date::text as publication_date,
             ts_headline('portuguese', coalesce(d.text_content, d.title_original),
                         websearch_to_tsquery('portuguese', $1),
-                        'MaxFragments=2, MinWords=8, MaxWords=28, StartSel=<<, StopSel=>>') as snippet,
+                        'MaxFragments=3, MinWords=18, MaxWords=55, StartSel=<<, StopSel=>>') as snippet,
             ts_rank_cd(d.search_vector, websearch_to_tsquery('portuguese', $1)) as rank,
             d.is_synthetic,
             coalesce(
@@ -315,6 +315,10 @@ export async function searchDocuments(
        from ma.document_versions d
        join ma.sources s on s.id = d.source_id
       where d.search_vector @@ websearch_to_tsquery('portuguese', $1)
+        and not exists (
+          select 1 from ma.document_versions newer
+           where newer.supersedes_id = d.id
+        )
         and ($2::date is null or d.publication_date >= $2::date)
         and ($3::date is null or d.publication_date <= $3::date)
       order by rank desc, d.publication_date desc nulls last
