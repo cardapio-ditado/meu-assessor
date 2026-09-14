@@ -278,6 +278,8 @@ export interface DocumentHit {
   readonly snippet: string;
   readonly rank: number;
   readonly isSynthetic: boolean;
+  /** Evidencias ancoradas no documento, usadas para a camada "Comprove". */
+  readonly evidenceIds: readonly string[];
 }
 
 /** Busca textual no acervo, com filtro estruturado de periodo. */
@@ -296,13 +298,20 @@ export async function searchDocuments(
     snippet: string;
     rank: number;
     is_synthetic: boolean;
+    evidence_ids: string[];
   }>(
     `select d.id, d.title_original, s.code, d.publication_date::text as publication_date,
             ts_headline('portuguese', coalesce(d.text_content, d.title_original),
                         websearch_to_tsquery('portuguese', $1),
                         'MaxFragments=2, MinWords=8, MaxWords=28, StartSel=<<, StopSel=>>') as snippet,
             ts_rank_cd(d.search_vector, websearch_to_tsquery('portuguese', $1)) as rank,
-            d.is_synthetic
+            d.is_synthetic,
+            coalesce(
+              (select array_agg(ev.id order by ev.obtained_at desc)
+                 from ma.evidence ev
+                where ev.document_version_id = d.id),
+              '{}'
+            ) as evidence_ids
        from ma.document_versions d
        join ma.sources s on s.id = d.source_id
       where d.search_vector @@ websearch_to_tsquery('portuguese', $1)
@@ -320,5 +329,6 @@ export async function searchDocuments(
     snippet: r.snippet,
     rank: Number(r.rank),
     isSynthetic: r.is_synthetic,
+    evidenceIds: r.evidence_ids,
   }));
 }
