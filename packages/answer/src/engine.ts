@@ -4,6 +4,7 @@
  * testes possam falhar em um ponto especifico.
  */
 import { createHash, randomUUID } from 'node:crypto';
+import { interpretQuestion } from '../../ai/src/gemini.ts';
 import type { QueryRunner } from '../../db/src/pool.ts';
 import { accessSignature } from '../../db/src/auth.ts';
 import {
@@ -18,7 +19,13 @@ import {
   getRelationTypesBySubject,
   getTimeline,
 } from '../../db/src/repository.ts';
-import { resolveOne, searchEntities, type EntityCandidate } from '../../retrieval/src/search.ts';
+import {
+  resolveOne,
+  searchDocuments,
+  searchEntities,
+  type DocumentHit,
+  type EntityCandidate,
+} from '../../retrieval/src/search.ts';
 import { computeTotal, type TotalResult } from '../../finance/src/totals.ts';
 import { deduplicate } from '../../finance/src/dedup.ts';
 import { todayIn } from '../../domain/src/temporal.ts';
@@ -75,6 +82,60 @@ export async function currentDataVersion(db: QueryRunner): Promise<string> {
   return r.rows[0]?.v ?? 'empty';
 }
 
+
+function documentMatches(
+  plan: QueryPlan,
+  municipality: string,
+  hits: readonly DocumentHit[],
+  dataVersion: string,
+  sourceCheckedAt: string | null,
+): AnswerEnvelope {
+  const evidenceIds = [...new Set(hits.flatMap((hit) => hit.evidenceIds))];
+  const dated = hits
+    .map((hit) => hit.publicationDate)
+    .filter((date): date is NonNullable<DocumentHit['publicationDate']> => date !== null)
+    .sort();
+
+  return {
+    answerId: randomUUID(),
+    context: {
+      municipality,
+      period: `${plan.period.from} a ${plan.period.to}`,
+    },
+    status: 'partial',
+    summary:
+      `Encontrei ${hits.length} documento(s) relacionado(s) a sua pergunta. ` +
+      'Listei os registros mais relevantes para voce escolher o assunto que deseja aprofundar.',
+    claims: [],
+    missingFields: [],
+    warnings: [
+      'Esta e uma busca no acervo documental. O resultado indica documentos relacionados, nao uma conclusao sobre o conteudo.',
+      ...(plan.periodIsDefault
+        ? [`Periodo padrao aplicado: ${plan.period.from} a ${plan.period.to}.`]
+        : []),
+    ],
+    conflicts: [],
+    layers: {
+      brief:
+        `Encontrei ${hits.length} documento(s) relacionado(s) no acervo de ${municipality}. ` +
+        'Abra as fontes para conferir ou pesquise pelo titulo de um resultado.',
+      understand: hits.map((hit) => ({
+        label: `${hit.sourceCode} · ${hit.title}`,
+        value: hit.snippet.replaceAll('<<', '').replaceAll('>>', ''),
+        state: 'documented',
+        evidenceIds: hit.evidenceIds,
+        factDate: hit.publicationDate,
+      })),
+      history: [],
+      prove: evidenceIds,
+    },
+    dataVersion,
+    sourceCheckedAt: sourceCheckedAt as AnswerEnvelope['sourceCheckedAt'],
+    evidenceReferenceAt: dated.at(-1) ?? null,
+    researchJobId: null,
+  };
+}
+
 function emptyValidation(): ValidationResult {
   return { verdict: 'passed', assessments: [], keptClaims: [], removedClaims: [], technicalReasons: [] };
 }
@@ -86,6 +147,7 @@ export async function ask(
 ): Promise<AskResult> {
   const startedAt = performance.now();
   const plan = planQuestion(question, context);
+  const interpretation = await interpretQuestion(question);
   const today = todayIn(context.timeZone);
   const dataVersion = await currentDataVersion(db);
   const periodText = `${plan.period.from} a ${plan.period.to}`;
@@ -102,7 +164,7 @@ export async function ask(
     );
   }
 
-  const candidates = await searchEntities(db, context, plan.rawQuestion, { kinds: plan.entityKinds });
+  const candidates = await searchEntities(db, context, interpretation.searchQuery, { kinds: plan.entityKinds });
   const resolution = resolveOne(candidates);
 
   // T02 / 6.1: nao escolher silenciosamente a primeira entre candidatos.
@@ -119,6 +181,25 @@ export async function ask(
       cacheKeyFor(context, plan, null, dataVersion),
       startedAt,
     );
+  }
+
+  // Perguntas amplas ("quais contratos existem?", "o que saiu no diario?")
+  // frequentemente nao nomeiam uma entidade. Antes, o motor encerrava aqui e
+  // ignorava a busca documental que ja existia. Agora o acervo e consultado e
+  // devolvido como lista rastreavel, sem inventar uma sintese factual.
+  if (resolution.kind === 'not_found') {
+    const hits = await searchDocuments(db, interpretation.searchQuery, { period: plan.period, limit: 10 });
+    if (hits.length > 0) {
+      const sourceCheckedAt = await getLastSuccessfulCollection(db);
+      return finish(
+        documentMatches(plan, context.municipalityName, hits, dataVersion, sourceCheckedAt),
+        plan,
+        emptyValidation(),
+        candidates,
+        cacheKeyFor(context, plan, null, dataVersion),
+        startedAt,
+      );
+    }
   }
 
   const subject = resolution.entity === null ? null : await getEntity(db, resolution.entity.id);

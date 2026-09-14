@@ -517,6 +517,12 @@ export function configWarnings(): string[] {
   if ((process.env['DATABASE_URL'] ?? '') === '') out.push('DATABASE_URL ausente: nenhuma consulta funciona.');
   if (!sessions.hasSecret()) out.push('SESSION_SECRET ausente ou com menos de 32 caracteres: nenhum login e aceito.');
   if ((process.env['DEMO_PASSWORD'] ?? '') === '') out.push('DEMO_PASSWORD ausente: nenhum login e aceito.');
+  if (
+    (process.env['AI_PROVIDER'] ?? 'none') === 'gemini' &&
+    (process.env['GEMINI_API_KEY'] ?? process.env['AI_API_KEY'] ?? '') === ''
+  ) {
+    out.push('AI_PROVIDER=gemini sem GEMINI_API_KEY: a busca usara o modo deterministico.');
+  }
   return out;
 }
 

@@ -10,7 +10,7 @@
  */
 import type { QueryRunner } from '../../db/src/pool.ts';
 import type { AuthorizedContext, EntityKind } from '../../domain/src/types.ts';
-import type { DateRange } from '../../domain/src/temporal.ts';
+import { plainDate, type DateRange, type PlainDate } from '../../domain/src/temporal.ts';
 
 export interface EntityCandidate {
   readonly id: string;
@@ -274,10 +274,12 @@ export interface DocumentHit {
   readonly documentVersionId: string;
   readonly title: string;
   readonly sourceCode: string;
-  readonly publicationDate: string | null;
+  readonly publicationDate: PlainDate | null;
   readonly snippet: string;
   readonly rank: number;
   readonly isSynthetic: boolean;
+  /** Evidencias ancoradas no documento, usadas para a camada "Comprove". */
+  readonly evidenceIds: readonly string[];
 }
 
 /** Busca textual no acervo, com filtro estruturado de periodo. */
@@ -296,13 +298,20 @@ export async function searchDocuments(
     snippet: string;
     rank: number;
     is_synthetic: boolean;
+    evidence_ids: string[];
   }>(
     `select d.id, d.title_original, s.code, d.publication_date::text as publication_date,
             ts_headline('portuguese', coalesce(d.text_content, d.title_original),
                         websearch_to_tsquery('portuguese', $1),
                         'MaxFragments=2, MinWords=8, MaxWords=28, StartSel=<<, StopSel=>>') as snippet,
             ts_rank_cd(d.search_vector, websearch_to_tsquery('portuguese', $1)) as rank,
-            d.is_synthetic
+            d.is_synthetic,
+            coalesce(
+              (select array_agg(ev.id order by ev.obtained_at desc)
+                 from ma.evidence ev
+                where ev.document_version_id = d.id),
+              '{}'
+            ) as evidence_ids
        from ma.document_versions d
        join ma.sources s on s.id = d.source_id
       where d.search_vector @@ websearch_to_tsquery('portuguese', $1)
@@ -316,9 +325,10 @@ export async function searchDocuments(
     documentVersionId: r.id,
     title: r.title_original,
     sourceCode: r.code,
-    publicationDate: r.publication_date,
+    publicationDate: r.publication_date === null ? null : plainDate(r.publication_date),
     snippet: r.snippet,
     rank: Number(r.rank),
     isSynthetic: r.is_synthetic,
+    evidenceIds: r.evidence_ids,
   }));
 }
