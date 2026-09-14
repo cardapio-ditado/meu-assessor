@@ -4,7 +4,11 @@
  * testes possam falhar em um ponto especifico.
  */
 import { createHash, randomUUID } from 'node:crypto';
-import { interpretQuestion } from '../../ai/src/gemini.ts';
+import {
+  interpretQuestion,
+  synthesizeDocumentAnswer,
+  type DocumentSynthesis,
+} from '../../ai/src/gemini.ts';
 import type { QueryRunner } from '../../db/src/pool.ts';
 import { accessSignature } from '../../db/src/auth.ts';
 import {
@@ -36,7 +40,7 @@ import { compose } from './compose.ts';
 import { planQuestion, type QueryPlan } from './planner.ts';
 import { validateAnswer, type ValidationResult } from './validator.ts';
 
-export const PROMPT_VERSION = 'prompts/v1';
+export const PROMPT_VERSION = 'prompts/v2-executive-documents';
 
 export interface AskResult {
   readonly envelope: AnswerEnvelope;
@@ -83,18 +87,60 @@ export async function currentDataVersion(db: QueryRunner): Promise<string> {
 }
 
 
+function preferredDocumentTypes(question: string): readonly string[] | null {
+  const normalized = question
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+
+  if (/\b(contrato|contratos|aditivo|aditivos)\b/.test(normalized)) {
+    return ['contract'];
+  }
+  if (/\b(emenda|emendas|repasse|repasses|transferencia|transferencias|convenio|convenios)\b/.test(normalized)) {
+    return ['transfer_instrument'];
+  }
+  if (/\b(diario|edital|licitacao|decreto|portaria|publicacao)\b/.test(normalized)) {
+    return ['official_gazette'];
+  }
+  return null;
+}
+
 function documentMatches(
   plan: QueryPlan,
   municipality: string,
   hits: readonly DocumentHit[],
   dataVersion: string,
   sourceCheckedAt: string | null,
+  synthesis: DocumentSynthesis,
 ): AnswerEnvelope {
   const evidenceIds = [...new Set(hits.flatMap((hit) => hit.evidenceIds))];
   const dated = hits
     .map((hit) => hit.publicationDate)
     .filter((date): date is NonNullable<DocumentHit['publicationDate']> => date !== null)
     .sort();
+  const hitByIndex = new Map(hits.map((hit, index) => [index + 1, hit] as const));
+
+  const understand = synthesis.items.flatMap((item) => {
+    const hit = hitByIndex.get(item.documentIndex);
+    if (hit === undefined) return [];
+    const attention =
+      item.attention === null ? '' : ` Ponto de atenção: ${item.attention}`;
+    return [{
+      label: `${hit.sourceCode} · ${item.headline}`,
+      value: `${item.explanation}${attention}`,
+      state: 'documented' as const,
+      evidenceIds: hit.evidenceIds,
+      factDate: hit.publicationDate,
+    }];
+  });
+
+  const warnings = [
+    ...synthesis.limitations,
+    'Resposta elaborada a partir dos documentos localizados. Confira os atos originais em "Comprove".',
+  ];
+  if (synthesis.provider === 'deterministic') {
+    warnings.push('A síntese automática ficou indisponível; a apresentação foi reduzida.');
+  }
 
   return {
     answerId: randomUUID(),
@@ -103,29 +149,14 @@ function documentMatches(
       period: `${plan.period.from} a ${plan.period.to}`,
     },
     status: 'partial',
-    summary:
-      `Encontrei ${hits.length} documento(s) relacionado(s) a sua pergunta. ` +
-      'Listei os registros mais relevantes para voce escolher o assunto que deseja aprofundar.',
+    summary: synthesis.summary,
     claims: [],
     missingFields: [],
-    warnings: [
-      'Esta e uma busca no acervo documental. O resultado indica documentos relacionados, nao uma conclusao sobre o conteudo.',
-      ...(plan.periodIsDefault
-        ? [`Periodo padrao aplicado: ${plan.period.from} a ${plan.period.to}.`]
-        : []),
-    ],
+    warnings,
     conflicts: [],
     layers: {
-      brief:
-        `Encontrei ${hits.length} documento(s) relacionado(s) no acervo de ${municipality}. ` +
-        'Abra as fontes para conferir ou pesquise pelo titulo de um resultado.',
-      understand: hits.map((hit) => ({
-        label: `${hit.sourceCode} · ${hit.title}`,
-        value: hit.snippet.replaceAll('<<', '').replaceAll('>>', ''),
-        state: 'documented',
-        evidenceIds: hit.evidenceIds,
-        factDate: hit.publicationDate,
-      })),
+      brief: synthesis.summary,
+      understand,
       history: [],
       prove: evidenceIds,
     },
@@ -188,11 +219,39 @@ export async function ask(
   // ignorava a busca documental que ja existia. Agora o acervo e consultado e
   // devolvido como lista rastreavel, sem inventar uma sintese factual.
   if (resolution.kind === 'not_found') {
-    const hits = await searchDocuments(db, interpretation.searchQuery, { period: plan.period, limit: 10 });
+    const documentTypes = preferredDocumentTypes(question);
+    let hits = await searchDocuments(db, interpretation.searchQuery, {
+      period: plan.period,
+      limit: 10,
+      documentTypes,
+    });
+    if (hits.length === 0 && documentTypes !== null) {
+      hits = await searchDocuments(db, interpretation.searchQuery, {
+        period: plan.period,
+        limit: 10,
+      });
+    }
     if (hits.length > 0) {
       const sourceCheckedAt = await getLastSuccessfulCollection(db);
+      const synthesis = await synthesizeDocumentAnswer(
+        question,
+        hits.map((hit, index) => ({
+          documentIndex: index + 1,
+          sourceCode: hit.sourceCode,
+          title: hit.title,
+          publicationDate: hit.publicationDate,
+          snippet: hit.snippet,
+        })),
+      );
       return finish(
-        documentMatches(plan, context.municipalityName, hits, dataVersion, sourceCheckedAt),
+        documentMatches(
+          plan,
+          context.municipalityName,
+          hits,
+          dataVersion,
+          sourceCheckedAt,
+          synthesis,
+        ),
         plan,
         emptyValidation(),
         candidates,

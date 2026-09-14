@@ -1,6 +1,9 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseGeminiInterpretation } from '../../packages/ai/src/gemini.ts';
+import {
+  parseGeminiDocumentSynthesis,
+  parseGeminiInterpretation,
+} from '../../packages/ai/src/gemini.ts';
 
 describe('interpretacao segura do Gemini', () => {
   test('aceita somente consulta curta e palavras textuais', () => {
@@ -34,4 +37,40 @@ describe('interpretacao segura do Gemini', () => {
     );
     assert.equal(result.searchQuery, 'emendas destinadas');
   });
+
+  test('vincula a sintese somente aos documentos recuperados', () => {
+    const documents = [{
+      documentIndex: 1,
+      sourceCode: 'F04',
+      title: 'Diario Oficial 539',
+      publicationDate: '2026-07-10',
+      snippet: 'O ato designa fiscais para acompanhar contratos.',
+    }];
+    const result = parseGeminiDocumentSynthesis(
+      JSON.stringify({
+        summary: 'Foram localizadas designacoes de fiscais de contratos.',
+        items: [{
+          documentIndex: 1,
+          headline: 'Fiscalizacao de contratos',
+          explanation: 'O ato designa servidores para acompanhar a execucao contratual.',
+          attention: 'Verificar se todas as designacoes continuam vigentes.',
+        }, {
+          documentIndex: 99,
+          headline: 'Documento inventado',
+          explanation: 'Nao pode entrar.',
+          attention: '',
+        }],
+        limitations: ['O trecho nao apresenta valores contratuais.'],
+      }),
+      documents,
+      'gemini-3.5-flash-lite',
+    );
+
+    assert.equal(result.provider, 'gemini');
+    assert.equal(result.items.length, 1);
+    assert.equal(result.items[0]?.documentIndex, 1);
+    assert.equal(result.items[0]?.headline, 'Fiscalizacao de contratos');
+    assert.deepEqual(result.limitations, ['O trecho nao apresenta valores contratuais.']);
+  });
+
 });

@@ -286,10 +286,15 @@ export interface DocumentHit {
 export async function searchDocuments(
   db: QueryRunner,
   question: string,
-  options: { readonly period?: DateRange | null; readonly limit?: number } = {},
+  options: {
+    readonly period?: DateRange | null;
+    readonly limit?: number;
+    readonly documentTypes?: readonly string[] | null;
+  } = {},
 ): Promise<DocumentHit[]> {
   const limit = Math.min(options.limit ?? 10, 50);
   const period = options.period ?? null;
+  const documentTypes = options.documentTypes ?? null;
   const result = await db.query<{
     id: string;
     title_original: string;
@@ -303,7 +308,7 @@ export async function searchDocuments(
     `select d.id, d.title_original, s.code, d.publication_date::text as publication_date,
             ts_headline('portuguese', coalesce(d.text_content, d.title_original),
                         websearch_to_tsquery('portuguese', $1),
-                        'MaxFragments=2, MinWords=8, MaxWords=28, StartSel=<<, StopSel=>>') as snippet,
+                        'MaxFragments=3, MinWords=18, MaxWords=55, StartSel=<<, StopSel=>>') as snippet,
             ts_rank_cd(d.search_vector, websearch_to_tsquery('portuguese', $1)) as rank,
             d.is_synthetic,
             coalesce(
@@ -315,11 +320,16 @@ export async function searchDocuments(
        from ma.document_versions d
        join ma.sources s on s.id = d.source_id
       where d.search_vector @@ websearch_to_tsquery('portuguese', $1)
+        and not exists (
+          select 1 from ma.document_versions newer
+           where newer.supersedes_id = d.id
+        )
         and ($2::date is null or d.publication_date >= $2::date)
         and ($3::date is null or d.publication_date <= $3::date)
+        and ($5::text[] is null or d.document_type = any($5))
       order by rank desc, d.publication_date desc nulls last
       limit $4`,
-    [question, period?.from ?? null, period?.to ?? null, limit],
+    [question, period?.from ?? null, period?.to ?? null, limit, documentTypes],
   );
   return result.rows.map((r) => ({
     documentVersionId: r.id,
