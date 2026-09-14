@@ -4,72 +4,124 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#123f5a">
 <title>Meu Assessor</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-<a class="skip" href="#conteudo">Ir para o conteudo</a>
+<a class="skip" href="#conteudo">Ir para o conteúdo</a>
 
 <header class="topo">
-  <div class="marca">
-    <span class="marca-nome">Meu Assessor</span>
-    <span class="marca-mun" id="municipio">carregando...</span>
+  <div class="topo-conteudo">
+    <div class="marca">
+      <span class="marca-simbolo" aria-hidden="true">M</span>
+      <span class="marca-textos">
+        <span class="marca-nome">Meu Assessor</span>
+        <span class="marca-mun" id="municipio">carregando...</span>
+      </span>
+    </div>
+    <button type="button" id="sair" class="botao-link" hidden>Sair</button>
   </div>
-  <button type="button" id="sair" class="link" hidden>Sair</button>
 </header>
 
 <main id="conteudo">
-
-  <!-- T01 / 7.2 - Acesso -->
-  <section id="tela-acesso" class="tela">
-    <h1>Entrar</h1>
-    <form id="form-acesso" novalidate>
-      <label for="login">Usuario</label>
-      <input id="login" name="login" autocomplete="username" required>
-      <label for="senha">Senha</label>
-      <input id="senha" name="senha" type="password" autocomplete="current-password" required>
-      <!-- 17.3: segredo nunca no frontend, nem como valor padrao de campo,
-           nem em ambiente de demonstracao. -->
-      <p class="ajuda">Ambiente de demonstracao com dados ficticios. As credenciais
-        do piloto sao fornecidas por quem opera o ambiente.</p>
-      <button type="submit" class="primario">Entrar</button>
-      <p id="erro-acesso" class="erro" role="alert" hidden></p>
-    </form>
+  <section id="tela-acesso" class="tela tela-acesso">
+    <div class="acesso-apresentacao">
+      <span class="eyebrow">Informação pública com contexto</span>
+      <h1>Decida com clareza. Confira a fonte.</h1>
+      <p>Consulte documentos da gestão, entenda o que aconteceu e veja o que ainda precisa ser confirmado.</p>
+    </div>
+    <div class="painel acesso-painel">
+      <div class="secao-cabecalho">
+        <div>
+          <span class="eyebrow">Acesso seguro</span>
+          <h2>Entre no Meu Assessor</h2>
+        </div>
+      </div>
+      <form id="form-acesso" novalidate>
+        <label for="login">Usuário</label>
+        <input id="login" name="login" autocomplete="username" required placeholder="Seu usuário">
+        <label for="senha">Senha</label>
+        <input id="senha" name="senha" type="password" autocomplete="current-password" required placeholder="Sua senha">
+        <p class="ajuda">As credenciais são fornecidas pelo responsável pelo ambiente.</p>
+        <button type="submit" class="primario">Entrar</button>
+        <p id="erro-acesso" class="erro" role="alert" hidden></p>
+      </form>
+      <div class="aviso-demo">
+        <span aria-hidden="true">i</span>
+        <p>Ambiente de demonstração. Os dados fictícios são identificados nas respostas.</p>
+      </div>
+    </div>
   </section>
 
-  <!-- 7.3 - Inicio -->
   <section id="tela-inicio" class="tela" hidden>
-    <p class="saudacao" id="saudacao"></p>
+    <div class="inicio-cabecalho">
+      <div>
+        <span class="eyebrow">Visão do gestor</span>
+        <h1>O que você precisa entender hoje?</h1>
+        <p class="saudacao" id="saudacao"></p>
+      </div>
+      <span class="status-base"><span class="status-ponto" aria-hidden="true"></span> Base consultável</span>
+    </div>
 
-    <form id="form-pergunta" class="pergunta">
-      <label for="pergunta">O que voce precisa saber?</label>
+    <form id="form-pergunta" class="painel pergunta">
+      <label for="pergunta">Faça uma pergunta sobre a gestão</label>
       <div class="linha-pergunta">
         <input id="pergunta" name="pergunta" autocomplete="off"
-               placeholder="Ex.: como esta a quadra do bairro Exemplo?">
+               placeholder="Ex.: como está a quadra do Bairro Exemplo?">
         <button type="button" id="gravar" class="microfone" aria-pressed="false">
-          <span aria-hidden="true">&#9679;</span>
+          <span class="icone-microfone" aria-hidden="true">●</span>
           <span class="rotulo-botao">Gravar</span>
         </button>
       </div>
-      <button type="submit" class="primario">Perguntar</button>
+      <button type="submit" class="primario perguntar-botao">Consultar</button>
       <p id="estado-voz" class="ajuda" role="status" aria-live="polite"></p>
+      <div class="sugestoes" aria-label="Sugestões de perguntas">
+        <span>Experimente:</span>
+        <button type="button" class="sugestao" data-pergunta-sugerida="O que mudou nos últimos dez dias?">O que mudou?</button>
+        <button type="button" class="sugestao" data-pergunta-sugerida="Quais contratos precisam de atenção?">Contratos em atenção</button>
+        <button type="button" class="sugestao" data-pergunta-sugerida="Quais informações ainda não foram confirmadas?">O que falta confirmar?</button>
+      </div>
     </form>
 
-    <p class="aviso-cobertura" id="aviso-cobertura"></p>
+    <section class="bloco-atencao" aria-labelledby="titulo-atencao">
+      <div class="secao-cabecalho">
+        <div>
+          <span class="eyebrow">Contexto dos dados</span>
+          <h2 id="titulo-atencao">Antes de decidir</h2>
+        </div>
+      </div>
+      <p class="aviso-cobertura" id="aviso-cobertura"></p>
+    </section>
 
-    <h2>Principais assuntos dos ultimos dias</h2>
-    <div id="cartoes" class="cartoes" aria-live="polite"></div>
+    <section id="assuntos-recentes" aria-labelledby="titulo-assuntos">
+      <div class="secao-cabecalho">
+        <div>
+          <span class="eyebrow">Movimentações recentes</span>
+          <h2 id="titulo-assuntos">Principais assuntos dos últimos dias</h2>
+        </div>
+        <span class="secao-ajuda">Toque para consultar</span>
+      </div>
+      <div id="cartoes" class="cartoes" aria-live="polite"></div>
+    </section>
 
-    <details class="cobertura">
-      <summary>Fontes e ultima verificacao</summary>
-      <div id="cobertura"></div>
+    <details class="painel cobertura">
+      <summary>
+        <span>
+          <span class="eyebrow">Transparência</span>
+          <strong>Fontes e atualização dos dados</strong>
+        </span>
+        <span class="summary-acao">Ver detalhes</span>
+      </summary>
+      <div class="tabela-scroll">
+        <div id="cobertura"></div>
+      </div>
     </details>
   </section>
 
-  <!-- 7.4 - Pergunta e resposta -->
-  <section id="tela-resposta" class="tela" hidden>
-    <button type="button" id="voltar" class="link">&#8592; Voltar</button>
+  <section id="tela-resposta" class="tela tela-resposta" hidden>
+    <button type="button" id="voltar" class="botao-voltar">← Voltar ao início</button>
     <p class="pergunta-eco" id="pergunta-eco"></p>
 
     <div id="estado-consulta" class="estado" role="status" aria-live="polite"></div>
@@ -81,66 +133,105 @@
         <span class="selo secundario" id="selo-dados"></span>
       </div>
 
-      <!-- Camada 1 -->
-      <h1 class="camada1" id="camada-breve"></h1>
+      <section class="resposta-direta">
+        <span class="eyebrow">Resposta direta</span>
+        <h1 class="camada1" id="camada-breve"></h1>
+      </section>
 
-      <!-- Escolha de entidade (T02) -->
-      <div id="escolhas" class="escolhas" hidden>
-        <h2>Qual delas?</h2>
+      <div id="escolhas" class="painel escolhas" hidden>
+        <span class="eyebrow">Precisamos confirmar</span>
+        <h2>Qual assunto você quis dizer?</h2>
         <div id="lista-escolhas"></div>
       </div>
 
-      <!-- Camada 2 -->
-      <section id="bloco-entenda" hidden>
-        <h2>Entenda</h2>
-        <dl id="camada-entenda" class="fatos"></dl>
-      </section>
-
       <div id="bloco-divergencias" class="caixa atencao" hidden>
-        <h2>Ha uma divergencia</h2>
-        <ul id="divergencias"></ul>
+        <span class="caixa-icone" aria-hidden="true">!</span>
+        <div>
+          <h2>Informações divergentes</h2>
+          <p class="caixa-intro">As fontes consultadas apresentam versões diferentes.</p>
+          <ul id="divergencias"></ul>
+        </div>
       </div>
 
-      <div id="bloco-lacunas" class="caixa" hidden>
-        <h2>O que ainda nao foi confirmado</h2>
-        <ul id="lacunas"></ul>
+      <div id="bloco-lacunas" class="caixa pendencia" hidden>
+        <span class="caixa-icone" aria-hidden="true">?</span>
+        <div>
+          <h2>O que ainda falta confirmar</h2>
+          <ul id="lacunas"></ul>
+        </div>
       </div>
 
-      <!-- Camada 3 -->
-      <section id="bloco-historico" hidden>
-        <h2>Historico e relacoes</h2>
+      <details id="bloco-entenda" class="painel detalhe resposta-detalhe" open hidden>
+        <summary>
+          <span>
+            <span class="eyebrow">Situação</span>
+            <strong>O que sabemos até agora</strong>
+          </span>
+          <span class="summary-acao">Abrir</span>
+        </summary>
+        <dl id="camada-entenda" class="fatos"></dl>
+      </details>
+
+      <details id="bloco-historico" class="painel detalhe resposta-detalhe" hidden>
+        <summary>
+          <span>
+            <span class="eyebrow">Evolução</span>
+            <strong>Histórico e relações</strong>
+          </span>
+          <span class="summary-acao">Ver linha do tempo</span>
+        </summary>
         <ol id="camada-historico" class="linha-tempo"></ol>
-      </section>
+      </details>
 
-      <!-- Camada 4 -->
-      <section id="bloco-comprove" hidden>
-        <h2>Comprove</h2>
+      <details id="bloco-comprove" class="painel detalhe resposta-detalhe" hidden>
+        <summary>
+          <span>
+            <span class="eyebrow">Rastreabilidade</span>
+            <strong>Documentos e evidências</strong>
+          </span>
+          <span class="summary-acao">Conferir fontes</span>
+        </summary>
         <div id="camada-comprove"></div>
-      </section>
+      </details>
 
       <div id="bloco-ressalvas" class="caixa discreta" hidden>
-        <h2>Ressalvas</h2>
-        <ul id="ressalvas"></ul>
+        <span class="caixa-icone" aria-hidden="true">i</span>
+        <div>
+          <h2>Observações importantes</h2>
+          <ul id="ressalvas"></ul>
+        </div>
       </div>
 
       <div id="bloco-validador" class="caixa discreta" hidden>
-        <h2>Verificacao</h2>
-        <p id="validador-texto"></p>
+        <span class="caixa-icone" aria-hidden="true">✓</span>
+        <div>
+          <h2>Como esta resposta foi verificada</h2>
+          <p id="validador-texto"></p>
+        </div>
       </div>
 
-      <form id="form-erro" class="feedback">
-        <label for="nota-erro">Ha um erro nesta resposta?</label>
-        <input id="nota-erro" name="nota" placeholder="Descreva o que esta incorreto">
-        <button type="submit" class="secundario">Enviar para revisao</button>
-        <p id="erro-enviado" class="ajuda" role="status"></p>
-      </form>
+      <details class="feedback-detalhe">
+        <summary>Encontrou algum erro nesta resposta?</summary>
+        <form id="form-erro" class="feedback">
+          <label for="nota-erro">Conte o que parece incorreto</label>
+          <input id="nota-erro" name="nota" placeholder="Descreva o problema">
+          <button type="submit" class="secundario">Enviar para revisão</button>
+          <p id="erro-enviado" class="ajuda" role="status"></p>
+        </form>
+      </details>
     </article>
   </section>
 </main>
 
-<nav class="barra" id="barra" hidden>
-  <button type="button" data-tela="tela-inicio" class="ativo">Inicio</button>
-  <button type="button" data-tela="perguntar">Perguntar</button>
+<nav class="barra" id="barra" hidden aria-label="Navegação principal">
+  <button type="button" data-tela="tela-inicio" class="ativo">
+    <span aria-hidden="true">⌂</span>
+    <span>Início</span>
+  </button>
+  <button type="button" data-tela="perguntar">
+    <span aria-hidden="true">＋</span>
+    <span>Nova pergunta</span>
+  </button>
 </nav>
 
 <footer class="pe">
