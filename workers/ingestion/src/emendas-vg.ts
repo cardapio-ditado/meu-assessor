@@ -44,9 +44,14 @@ async function collect(): Promise<{ amendments: EmendaVg[]; expected: number | n
   }
 
   const amendments: EmendaVg[] = [];
-  for (const [index, link] of [...links].entries()) {
-    amendments.push(parseEmendaVg(await getHtml(link), link));
-    if (index < links.size - 1) await new Promise((resolve) => setTimeout(resolve, 200));
+  const allLinks = [...links];
+  // Pequenos lotes paralelos evitam uma primeira carga de muitos minutos sem
+  // transformar o portal público em alvo de rajada.
+  for (let offset = 0; offset < allLinks.length; offset += 6) {
+    const batch = allLinks.slice(offset, offset + 6);
+    amendments.push(...await Promise.all(batch.map(async (link) =>
+      parseEmendaVg(await getHtml(link), link))));
+    if (offset + 6 < allLinks.length) await new Promise((resolve) => setTimeout(resolve, 500));
   }
   return { amendments, expected };
 }
