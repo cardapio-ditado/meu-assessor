@@ -42,7 +42,7 @@ import {
 } from '../../../packages/connectors/src/transferegov.ts';
 import { ingestBatch, type RawRecord } from './pipeline.ts';
 
-const PARSER_VERSION = 'transferegov-planos-acao/1.0.0';
+const PARSER_VERSION = 'transferegov-planos-acao/1.1.0';
 const CODIGO_FONTE = 'F10';
 const CONJUNTO = 'planos-acao-especiais';
 
@@ -231,6 +231,170 @@ function normalizar(texto: string): string {
 }
 
 /**
+ * Liga o plano a sua emenda de origem pelo identificador oficial.
+ *
+ * Quando a F03 municipal ja trouxe a mesma emenda, reaproveitamos a entidade.
+ * Caso contrario criamos uma entidade minima, documentada pela F10. O valor
+ * continua sendo o valor DESTINADO no plano; nao criamos evento financeiro,
+ * porque isso duplicaria a soma de orcado, empenhado, transferido ou pago.
+ */
+async function vincularEmendaOrigem(
+  db: QueryRunner,
+  context: AuthorizedContext,
+  p: PlanoAcao,
+  planoEntityId: string,
+  evidenceId: string,
+): Promise<void> {
+  const codigo = p.codigoEmendaFormatado ?? p.numeroEmenda;
+  if (codigo === null) return;
+
+  const codigoNormalizado = codigo.toUpperCase().replace(/[^0-9A-Z]/g, '');
+  if (codigoNormalizado.length === 0) return;
+
+  const existente = await db.query<{ id: string }>(
+    `select e.id
+       from ma.entities e
+      where e.tenant_id = $1
+        and e.kind = 'amendment'
+        and exists (
+          select 1
+            from jsonb_each_text(e.external_ids) x
+           where regexp_replace(upper(x.value), '[^0-9A-Z]', '', 'g') = $2
+        )
+      order by e.created_at
+      limit 1`,
+    [context.tenantId, codigoNormalizado],
+  );
+
+  let emendaId = existente.rows[0]?.id;
+  const aliases = [codigo, p.numeroEmenda, p.codigoEmendaFormatado, p.nomeParlamentar].filter(
+    (v): v is string => v !== null && v.trim().length > 0,
+  );
+
+  if (emendaId === undefined) {
+    const nome = `Emenda ${codigo}${p.nomeParlamentar === null ? '' : ` — ${p.nomeParlamentar}`}`;
+    const nova = await db.query<{ id: string }>(
+      `insert into ma.entities
+         (tenant_id, municipality_id, kind, official_name, name_normalized, aliases,
+          external_ids, area, is_synthetic)
+       values ($1,$2,'amendment',$3,$4,$5::text[],$6::jsonb,$7,false)
+       returning id`,
+      [
+        context.tenantId,
+        context.municipalityId,
+        nome,
+        normalizar(nome),
+        aliases,
+        JSON.stringify({ transferegov_emenda: codigo, codigo_emenda: codigo }),
+        p.areasPoliticasPublicas,
+      ],
+    );
+    emendaId = nova.rows[0]?.id;
+    if (emendaId === undefined) throw new Error('falha ao criar entidade da emenda de origem');
+  } else {
+    await db.query(
+      `update ma.entities
+          set external_ids = external_ids || jsonb_build_object('transferegov_emenda', $3::text),
+              aliases = array(
+                select distinct valor
+                  from unnest(array_cat(coalesce(aliases, '{}'::text[]), $4::text[])) valor
+                 where btrim(valor) <> ''
+              ),
+              area = coalesce(area, $5)
+        where tenant_id = $1 and id = $2`,
+      [context.tenantId, emendaId, codigo, aliases, p.areasPoliticasPublicas],
+    );
+  }
+
+  const afirmacoes: AfirmacaoDesejada[] = [
+    {
+      predicate: 'transferegov_amendment_code',
+      valueType: 'text',
+      text: codigo,
+      qualifiers: { fonte: 'plano de acao de transferencia especial' },
+    },
+    {
+      predicate: 'transferegov_origin_plan',
+      valueType: 'text',
+      text: p.codigoPlanoAcao,
+      qualifiers: { vinculo: 'emenda de origem declarada pela fonte' },
+    },
+  ];
+  if (p.nomeParlamentar !== null) {
+    afirmacoes.push({
+      predicate: 'transferegov_plan_parliamentarian',
+      valueType: 'text',
+      text: p.nomeParlamentar,
+      qualifiers: {
+        codigo_parlamentar: p.codigoParlamentar,
+        ressalva: 'nome associado a emenda no plano; nao prova autoria de obra ou execucao',
+      },
+    });
+  }
+  if (p.totalCentavos !== null) {
+    afirmacoes.push({
+      predicate: 'transferegov_plan_total_value',
+      valueType: 'money',
+      money: p.totalCentavos,
+      qualifiers: { estagio: 'destinado no plano; nao empenhado, transferido nem pago' },
+    });
+  }
+
+  for (const a of afirmacoes) {
+    await db.query(
+      `update ma.claims set retired_at = now()
+        where tenant_id = $1 and subject_id = $2 and predicate = $3 and retired_at is null`,
+      [context.tenantId, emendaId, a.predicate],
+    );
+    const claim = await db.query<{ id: string }>(
+      `insert into ma.claims
+         (tenant_id, subject_id, predicate, value_text, value_money, currency, value_type,
+          qualifiers, fact_date, state, validation_state, freshness_class,
+          reviewed_by, review_method, is_synthetic)
+       values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,
+               'documented'::ma.evidence_state,'auto_validated'::ma.validation_state,
+               'stable_history'::ma.freshness_class,$10,$11,false)
+       returning id`,
+      [
+        context.tenantId,
+        emendaId,
+        a.predicate,
+        a.text ?? null,
+        a.money == null ? null : (Number(a.money) / 100).toFixed(2),
+        a.money == null ? null : 'BRL',
+        a.valueType,
+        JSON.stringify(a.qualifiers ?? {}),
+        p.dataAceite,
+        PARSER_VERSION,
+        'vinculo exato por identificador oficial declarado no plano de acao',
+      ],
+    );
+    const claimId = claim.rows[0]?.id;
+    if (claimId === undefined) throw new Error('falha ao criar afirmacao da emenda de origem');
+    await db.query(
+      `insert into ma.claim_evidence (claim_id, evidence_id, supports)
+       values ($1,$2,'value') on conflict do nothing`,
+      [claimId, evidenceId],
+    );
+  }
+
+  await db.query(
+    `insert into ma.chain_links
+       (tenant_id, from_entity_id, to_entity_id, from_step, to_step,
+        shared_identifier, evidence_ids, fact_date, validation_state)
+     select $1,$2,$3,'amendment','transfer_plan',$4,array[$5]::uuid[],$6,
+            'auto_validated'::ma.validation_state
+      where not exists (
+        select 1 from ma.chain_links
+         where tenant_id = $1 and from_entity_id = $2 and to_entity_id = $3
+           and from_step = 'amendment' and to_step = 'transfer_plan'
+           and shared_identifier = $4
+      )`,
+    [context.tenantId, emendaId, planoEntityId, codigo, evidenceId, p.dataAceite],
+  );
+}
+
+/**
  * Cria (ou reaproveita) a entidade do plano e grava as afirmacoes ligadas a
  * evidencia do documento.
  *
@@ -249,10 +413,11 @@ async function promover(
     `select ev.id
        from ma.evidence ev
        join ma.document_versions d on d.id = ev.document_version_id
-      where d.tenant_id = $1 and d.external_id = $2
+       join ma.sources s on s.id = d.source_id and s.tenant_id = d.tenant_id
+      where d.tenant_id = $1 and d.external_id = $2 and s.code = $3
       order by d.record_version desc, ev.obtained_at desc
       limit 1`,
-    [context.tenantId, externalId],
+    [context.tenantId, externalId, CODIGO_FONTE],
   );
   let evidenciaId = evidencia.rows[0]?.id;
 
@@ -262,10 +427,12 @@ async function promover(
    */
   if (evidenciaId === undefined) {
     const documento = await db.query<{ id: string; text_content: string | null }>(
-      `select id, text_content from ma.document_versions
-        where tenant_id = $1 and external_id = $2
-        order by record_version desc limit 1`,
-      [context.tenantId, externalId],
+      `select d.id, d.text_content
+         from ma.document_versions d
+         join ma.sources s on s.id = d.source_id and s.tenant_id = d.tenant_id
+        where d.tenant_id = $1 and d.external_id = $2 and s.code = $3
+        order by d.record_version desc limit 1`,
+      [context.tenantId, externalId, CODIGO_FONTE],
     );
     const doc = documento.rows[0];
     // Sem documento nao ha o que ancorar, e afirmacao sem origem e exatamente o
@@ -362,6 +529,8 @@ async function promover(
       [claimId, evidenciaId],
     );
   }
+
+  await vincularEmendaOrigem(db, context, p, entidadeId, evidenciaId);
 
   return criada ? 'criada' : 'atualizada';
 }
