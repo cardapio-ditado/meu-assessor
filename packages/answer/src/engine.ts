@@ -112,6 +112,7 @@ function documentMatches(
   dataVersion: string,
   sourceCheckedAt: string | null,
   synthesis: DocumentSynthesis,
+  fullArchive: boolean,
 ): AnswerEnvelope {
   const evidenceIds = [...new Set(hits.flatMap((hit) => hit.evidenceIds))];
   const dated = hits
@@ -138,6 +139,9 @@ function documentMatches(
     ...synthesis.limitations,
     'Resposta elaborada a partir dos documentos localizados. Confira os atos originais em "Comprove".',
   ];
+  if (fullArchive) {
+    warnings.push('Como a pergunta não informou ano, a busca consultou todo o acervo disponível.');
+  }
   if (synthesis.provider === 'deterministic') {
     warnings.push('A síntese automática ficou indisponível; a apresentação foi reduzida.');
   }
@@ -146,7 +150,7 @@ function documentMatches(
     answerId: randomUUID(),
     context: {
       municipality,
-      period: `${plan.period.from} a ${plan.period.to}`,
+      period: fullArchive ? 'Todo o acervo disponível' : `${plan.period.from} a ${plan.period.to}`,
     },
     status: 'partial',
     summary: synthesis.summary,
@@ -220,14 +224,19 @@ export async function ask(
   // devolvido como lista rastreavel, sem inventar uma sintese factual.
   if (resolution.kind === 'not_found') {
     const documentTypes = preferredDocumentTypes(question);
+    // Periodos padrao ajudam a explicar a consulta, mas nao podem esconder
+    // documentos sem que o gestor tenha pedido um recorte. Apenas perguntas
+    // explicitamente recentes ou com ano informado filtram o acervo.
+    const fullArchive = plan.periodIsDefault && plan.intent !== 'recent_changes';
+    const documentPeriod = fullArchive ? null : plan.period;
     let hits = await searchDocuments(db, interpretation.searchQuery, {
-      period: plan.period,
+      period: documentPeriod,
       limit: 10,
       documentTypes,
     });
     if (hits.length === 0 && documentTypes !== null) {
       hits = await searchDocuments(db, interpretation.searchQuery, {
-        period: plan.period,
+        period: documentPeriod,
         limit: 10,
       });
     }
@@ -251,6 +260,7 @@ export async function ask(
           dataVersion,
           sourceCheckedAt,
           synthesis,
+          fullArchive,
         ),
         plan,
         emptyValidation(),
