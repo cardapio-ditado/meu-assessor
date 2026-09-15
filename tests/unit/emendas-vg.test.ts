@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   linksDeEmendas,
   paginasDeEmendas,
+  parseListaEmendasVg,
   parseEmendaVg,
   totalDeEmendas,
 } from '../../packages/connectors/src/emendas-vg.ts';
@@ -15,6 +16,22 @@ test('descobre links, paginas e total da listagem', () => {
   assert.equal(totalDeEmendas(html), 63);
   assert.equal(paginasDeEmendas(html), 3);
   assert.deepEqual(linksDeEmendas(html).map((url) => url.split('/').at(-1)), ['17', '18']);
+});
+
+test('extrai emendas diretamente da tabela pública', () => {
+  const html = `<table><tbody><tr>
+    <td>2026</td><td>025/2026</td><td><span>Estadual</span></td>
+    <td>Transferência Especial</td><td><p>Paulo Araújo</p><p>Republicanos</p></td>
+    <td>Repasse financeiro para Custeio na Saúde</td><td>Secretaria da Saúde</td>
+    <td>R$ 250.000,00</td><td>R$ 500.000,00</td><td><span>Concluída</span></td>
+    <td><a href="https://emendas.varzeagrande.mt.gov.br/portal/emendas/31">Ver detalhes</a></td>
+  </tr></tbody></table>`;
+  const [amendment] = parseListaEmendasVg(html);
+  assert.equal(amendment?.id, '31');
+  assert.equal(amendment?.parlamentar, 'Paulo Araújo');
+  assert.equal(amendment?.valorOrcado, '250000.00');
+  assert.equal(amendment?.valorPago, '500000.00');
+  assert.equal(amendment?.valorEmpenhado, null);
 });
 
 test('extrai campos e separa os tres estagios financeiros', () => {
