@@ -1,0 +1,64 @@
+# Coleta diária de emendas federais e documentos relacionados na CGU (F07).
+name: Coletar emendas CGU (F07)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 06:43 em Cuiaba (UTC-4), fora do horario comercial.
+    - cron: '43 10 * * *'
+  push:
+    branches:
+      - claude/italo-moreira-campaign-landing-f0fsu0
+    paths:
+      - 'packages/connectors/src/cgu-emendas.ts'
+      - 'workers/ingestion/src/cgu-emendas.ts'
+      - 'tests/unit/cgu-emendas.test.ts'
+      - '.github/workflows/coletar-cgu-emendas.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coleta-f07-varzea-grande
+  cancel-in-progress: true
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validar conector
+        run: |
+          npm run typecheck
+          node --test --experimental-strip-types tests/unit/cgu-emendas.test.ts
+
+      - name: Coletar
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_SSL_NO_VERIFY: '1'
+          PORTAL_TRANSPARENCIA_API_KEY: ${{ secrets.PORTAL_TRANSPARENCIA_API_KEY }}
+          INGESTION_ALLOWED_HOSTS: api.portaldatransparencia.gov.br
+          DEFAULT_TENANT_SLUG: varzea-grande
+          INGESTION_LOGIN: admin.implantacao
+        run: |
+          set -euo pipefail
+          set +x
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "DATABASE_URL nao esta configurada." >&2
+            exit 1
+          fi
+          if [ -z "${PORTAL_TRANSPARENCIA_API_KEY:-}" ]; then
+            echo "PORTAL_TRANSPARENCIA_API_KEY nao esta configurada." >&2
+            exit 1
+          fi
+          node --experimental-strip-types workers/ingestion/src/cgu-emendas.ts
