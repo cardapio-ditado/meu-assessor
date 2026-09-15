@@ -97,7 +97,7 @@ function preferredDocumentTypes(question: string): readonly string[] | null {
     return ['contract'];
   }
   if (/\b(emenda|emendas|repasse|repasses|transferencia|transferencias|convenio|convenios)\b/.test(normalized)) {
-    return ['transfer_instrument'];
+    return ['amendment', 'transfer_instrument'];
   }
   if (/\b(diario|edital|licitacao|decreto|portaria|publicacao)\b/.test(normalized)) {
     return ['official_gazette'];
