@@ -51,3 +51,37 @@ jobs:
             console.log("Token CGU autenticado com sucesso.");
             console.log("Resposta JSON valida; registros recebidos:", total);
           ' "$arquivo_resposta"
+
+      - name: Inspecionar contrato observado da F07
+        shell: bash
+        env:
+          PORTAL_TRANSPARENCIA_API_KEY: ${{ secrets.PORTAL_TRANSPARENCIA_API_KEY }}
+        run: |
+          set -euo pipefail
+          set +x
+          pasta="${RUNNER_TEMP}/contrato-cgu"
+          mkdir -p "$pasta"
+
+          curl --silent --show-error --fail             'https://api.portaldatransparencia.gov.br/v3/api-docs'             --output "$pasta/openapi.json"
+          curl --silent --show-error --fail             --header "chave-api-dados: ${PORTAL_TRANSPARENCIA_API_KEY}"             --header 'Accept: application/json'             'https://api.portaldatransparencia.gov.br/api-de-dados/emendas?ano=2024&pagina=1'             --output "$pasta/emendas.json"
+          curl --silent --show-error --fail             --header "chave-api-dados: ${PORTAL_TRANSPARENCIA_API_KEY}"             --header 'Accept: application/json'             'https://api.portaldatransparencia.gov.br/api-de-dados/emendas/documentos/202423760008'             --output "$pasta/documentos.json"
+
+          node - "$pasta" <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const pasta = process.argv[2];
+          const ler = (nome) => JSON.parse(fs.readFileSync(path.join(pasta, nome), 'utf8'));
+          const spec = ler('openapi.json');
+          for (const rota of ['/api-de-dados/emendas', '/api-de-dados/emendas/documentos/{codigo}']) {
+            const get = spec.paths?.[rota]?.get ?? {};
+            console.log('ROTA', rota);
+            console.log('PARAMETROS', JSON.stringify((get.parameters ?? []).map((p) => ({
+              nome: p.name, em: p.in, obrigatorio: p.required, schema: p.schema
+            }))));
+          }
+          for (const [rotulo, corpo] of [['EMENDAS', ler('emendas.json')], ['DOCUMENTOS', ler('documentos.json')]]) {
+            const lista = Array.isArray(corpo) ? corpo : [corpo];
+            console.log(rotulo, 'TOTAL_PAGINA', lista.length);
+            console.log(rotulo, 'AMOSTRA', JSON.stringify(lista[0] ?? null));
+          }
+          NODE
