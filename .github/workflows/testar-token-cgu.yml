@@ -1,0 +1,53 @@
+# Teste seguro da chave da API da CGU.
+# Nao imprime o segredo nem o corpo retornado pela API.
+name: Testar token CGU (F07)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/italo-moreira-campaign-landing-f0fsu0
+    paths:
+      - '.github/workflows/testar-token-cgu.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: teste-token-cgu
+  cancel-in-progress: true
+
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validar segredo e consultar emenda conhecida
+        shell: bash
+        env:
+          PORTAL_TRANSPARENCIA_API_KEY: ${{ secrets.PORTAL_TRANSPARENCIA_API_KEY }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          if [ -z "${PORTAL_TRANSPARENCIA_API_KEY:-}" ]; then
+            echo "O secret PORTAL_TRANSPARENCIA_API_KEY nao esta configurado." >&2
+            exit 1
+          fi
+
+          arquivo_resposta="${RUNNER_TEMP}/cgu-resposta.json"
+          codigo_http="$(curl --silent --show-error             --output "$arquivo_resposta"             --write-out '%{http_code}'             --header "chave-api-dados: ${PORTAL_TRANSPARENCIA_API_KEY}"             --header 'Accept: application/json'             'https://api.portaldatransparencia.gov.br/api-de-dados/emendas/documentos/202423760008')"
+
+          if [ "$codigo_http" != "200" ]; then
+            echo "A CGU respondeu HTTP $codigo_http. O token ou a consulta precisa de revisao." >&2
+            exit 1
+          fi
+
+          node -e '
+            const fs = require("node:fs");
+            const caminho = process.argv[1];
+            const corpo = JSON.parse(fs.readFileSync(caminho, "utf8"));
+            const total = Array.isArray(corpo) ? corpo.length : 1;
+            console.log("Token CGU autenticado com sucesso.");
+            console.log("Resposta JSON valida; registros recebidos:", total);
+          ' "$arquivo_resposta"
