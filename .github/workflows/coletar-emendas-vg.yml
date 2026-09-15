@@ -1,0 +1,49 @@
+name: Coletar emendas municipais (F03)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 11 * * *'
+  push:
+    branches:
+      - claude/italo-moreira-campaign-landing-f0fsu0
+    paths:
+      - packages/connectors/src/emendas-vg.ts
+      - workers/ingestion/src/emendas-vg.ts
+      - .github/workflows/coletar-emendas-vg.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coletar-emendas-vg
+  cancel-in-progress: false
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Coletar e publicar emendas
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_SSL_NO_VERIFY: '1'
+          INGESTION_ALLOWED_HOSTS: emendas.varzeagrande.mt.gov.br
+          DEFAULT_TENANT_SLUG: varzea-grande
+          INGESTION_LOGIN: admin.implantacao
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL não está configurada nos secrets do repositório." >&2
+            exit 1
+          fi
+          node --experimental-strip-types workers/ingestion/src/emendas-vg.ts

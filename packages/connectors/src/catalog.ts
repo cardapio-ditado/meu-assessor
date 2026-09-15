@@ -130,9 +130,12 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     recordTypes: ['amendment'],
     accessMethod: 'html',
     requiresCredentials: false,
-    integrationStatus: 'access_probed',
-    probe: REACHED,
-    knownLimitations: ['escopo, paginacao e acesso estruturado nao validados'],
+    integrationStatus: 'connector_built',
+    probe: 'portal público verificado em 2026-09-15: 63 emendas, três páginas e detalhes estruturados; conector aguarda a primeira execução completa',
+    knownLimitations: [
+      'os valores financeiros são posições acumuladas; a data individual de cada empenho ou pagamento não é publicada',
+      'o conector usa as páginas públicas de detalhe porque o download CSV não pôde ser reproduzido no ambiente de desenvolvimento',
+    ],
     datasets: [{ name: 'emendas', recordType: 'amendment', ...DAILY }],
   },
   {
