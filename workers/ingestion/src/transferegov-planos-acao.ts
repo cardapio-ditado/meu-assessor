@@ -245,7 +245,7 @@ async function vincularEmendaOrigem(
   planoEntityId: string,
   evidenceId: string,
 ): Promise<void> {
-  const codigo = p.codigoEmendaFormatado ?? p.numeroEmenda;
+  const codigo = p.numeroEmenda ?? p.codigoEmendaFormatado;
   if (codigo === null) return;
 
   const codigoNormalizado = codigo.toUpperCase().replace(/[^0-9A-Z]/g, '');
