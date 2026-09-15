@@ -7,7 +7,7 @@ import {
   PORTAL_EMENDAS_URL,
   linksDeEmendas,
   paginasDeEmendas,
-  parseEmendaVg,
+  parseListaEmendasVg,
   textoDaEmenda,
   totalDeEmendas,
   type EmendaVg,
@@ -30,12 +30,14 @@ async function collect(): Promise<{ amendments: EmendaVg[]; expected: number | n
   const expected = totalDeEmendas(first);
   const pages = paginasDeEmendas(first);
   const links = new Set(linksDeEmendas(first));
+  const amendments: EmendaVg[] = [...parseListaEmendasVg(first)];
 
   for (let page = 2; page <= pages; page += 1) {
     const url = new URL(PORTAL_EMENDAS_URL);
     url.searchParams.set('page', String(page));
     const html = await getHtml(url.toString());
     for (const link of linksDeEmendas(html)) links.add(link);
+    amendments.push(...parseListaEmendasVg(html));
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
 
@@ -43,15 +45,8 @@ async function collect(): Promise<{ amendments: EmendaVg[]; expected: number | n
     throw new Error(`portal declarou ${expected} emendas, mas a listagem revelou ${links.size} links`);
   }
 
-  const amendments: EmendaVg[] = [];
-  const allLinks = [...links];
-  // Pequenos lotes paralelos evitam uma primeira carga de muitos minutos sem
-  // transformar o portal público em alvo de rajada.
-  for (let offset = 0; offset < allLinks.length; offset += 6) {
-    const batch = allLinks.slice(offset, offset + 6);
-    amendments.push(...await Promise.all(batch.map(async (link) =>
-      parseEmendaVg(await getHtml(link), link))));
-    if (offset + 6 < allLinks.length) await new Promise((resolve) => setTimeout(resolve, 500));
+  if (amendments.length !== links.size) {
+    throw new Error(`foram lidas ${amendments.length} linhas para ${links.size} links de emendas`);
   }
   return { amendments, expected };
 }

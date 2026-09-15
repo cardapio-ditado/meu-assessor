@@ -85,6 +85,41 @@ export function paginasDeEmendas(html: string): number {
   return Math.max(1, ...pages);
 }
 
+/** Extrai os campos públicos da tabela, sem abrir 63 páginas individuais. */
+export function parseListaEmendasVg(html: string): EmendaVg[] {
+  const rows = [...html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
+  const amendments: EmendaVg[] = [];
+  for (const row of rows) {
+    const rowHtml = row[1] ?? '';
+    const cells = [...rowHtml.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map((match) => match[1] ?? '');
+    if (cells.length < 11) continue;
+    const link = /href=["'](https?:\/\/[^"']+\/portal\/emendas\/(\d+))["']/i.exec(cells[10] ?? '');
+    const year = Number(clean(cells[0] ?? ''));
+    const paragraphs = [...(cells[4] ?? '').matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
+      .map((match) => optional(match[1] ?? null));
+    if (link?.[1] === undefined || link[2] === undefined || !Number.isInteger(year)) continue;
+    amendments.push({
+      id: link[2], url: link[1].replace(/^http:/, 'https:'),
+      exercicio: year, codigo: clean(cells[1] ?? ''), esfera: clean(cells[2] ?? ''),
+      formaRepasse: optional(cells[3] ?? null), parlamentar: paragraphs[0] ?? null,
+      partido: paragraphs[1] ?? null, objeto: clean(cells[5] ?? ''),
+      orgaoExecutor: optional(cells[6] ?? null), valorOrcado: amountFromCell(cells[7] ?? ''),
+      valorPago: amountFromCell(cells[8] ?? ''), status: clean(cells[9] ?? ''),
+      valorEmpenhado: null, atualizadoEm: null, tipo: null, atoNormativo: null,
+      loaCredito: null, unidadeGestora: null, localidade: null, beneficiarioFinal: null,
+      processo: null, instrumentoJuridico: null, documentos: [],
+    });
+  }
+  return amendments;
+}
+
+function amountFromCell(cell: string): string | null {
+  const raw = clean(cell);
+  if (!/R\$/.test(raw)) return null;
+  const normalized = raw.replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.');
+  return /^-?\d+(?:\.\d{1,2})?$/.test(normalized) ? Number(normalized).toFixed(2) : null;
+}
+
 export function parseEmendaVg(html: string, url: string): EmendaVg {
   const id = /\/portal\/emendas\/(\d+)/.exec(url)?.[1];
   const codigo = optional(/<span[^>]*font-mono[^>]*>([\s\S]*?)<\/span>/i.exec(html)?.[1] ?? null);
