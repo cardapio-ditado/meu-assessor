@@ -251,6 +251,12 @@ async function vincularEmendaOrigem(
   const codigoNormalizado = codigo.toUpperCase().replace(/[^0-9A-Z]/g, '');
   if (codigoNormalizado.length === 0) return;
 
+  // Impede duas execucoes simultaneas de criarem a mesma emenda entre o
+  // SELECT e o INSERT. O bloqueio dura somente a transacao da coleta.
+  await db.query('select pg_advisory_xact_lock(hashtextextended($1, 0))', [
+    `${context.tenantId}:f10-emenda:${codigoNormalizado}`,
+  ]);
+
   const existente = await db.query<{ id: string }>(
     `select e.id
        from ma.entities e
