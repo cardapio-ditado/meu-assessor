@@ -10,6 +10,7 @@
 import {
   addDays,
   dateRange,
+  plainDate,
   todayIn,
   type DateRange,
   type PlainDate,
@@ -81,7 +82,28 @@ function detectIntent(lower: string): Intent {
   return 'unknown';
 }
 
-function periodFor(intent: Intent, today: PlainDate): { period: DateRange; isDefault: boolean } {
+function periodFor(
+  intent: Intent,
+  today: PlainDate,
+  identifiers: readonly RecognizedIdentifier[],
+): { period: DateRange; isDefault: boolean } {
+  const years = identifiers
+    .filter((identifier) => identifier.kind === 'year')
+    .map((identifier) => Number(identifier.normalized))
+    .filter((year) => Number.isInteger(year) && year >= 1900 && year <= 2100)
+    .sort((a, b) => a - b);
+  const firstYear = years[0];
+  const lastYear = years.at(-1);
+  if (firstYear !== undefined && lastYear !== undefined) {
+    return {
+      period: dateRange(
+        plainDate(`${firstYear}-01-01`),
+        plainDate(`${lastYear}-12-31`),
+      ),
+      isDefault: false,
+    };
+  }
+
   switch (intent) {
     case 'recent_changes':
       return { period: dateRange(addDays(today, -DEFAULT_RECENT_DAYS), today), isDefault: true };
@@ -158,8 +180,8 @@ export function planQuestion(question: string, context: AuthorizedContext): Quer
     .replace(/[̀-ͯ]/g, '');
   const intent = detectIntent(lower);
   const today = todayIn(context.timeZone);
-  const { period, isDefault } = periodFor(intent, today);
   const identifiers = recognizeIdentifiers(trimmed);
+  const { period, isDefault } = periodFor(intent, today, identifiers);
 
   let clarificationNeeded: string | null = null;
   if (trimmed.length < 3) {
