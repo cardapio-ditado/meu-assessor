@@ -324,8 +324,16 @@ export async function searchDocuments(
           select 1 from ma.document_versions newer
            where newer.supersedes_id = d.id
         )
-        and ($2::date is null or d.publication_date >= $2::date)
-        and ($3::date is null or d.publication_date <= $3::date)
+        and ($2::date is null or coalesce(
+              d.publication_date,
+              case when d.fiscal_year between 1900 and 2100 then make_date(d.fiscal_year, 1, 1) end,
+              d.reference_date
+            ) >= $2::date)
+        and ($3::date is null or coalesce(
+              d.publication_date,
+              case when d.fiscal_year between 1900 and 2100 then make_date(d.fiscal_year, 12, 31) end,
+              d.reference_date
+            ) <= $3::date)
         and ($5::text[] is null or d.document_type = any($5))
       order by rank desc, d.publication_date desc nulls last
       limit $4`,
