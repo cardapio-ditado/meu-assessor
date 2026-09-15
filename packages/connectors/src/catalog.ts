@@ -206,9 +206,15 @@ export const SOURCE_CATALOG: readonly SourceSpec[] = [
     recordTypes: ['amendment', 'financial_event'],
     accessMethod: 'api',
     requiresCredentials: true,
-    integrationStatus: 'access_probed',
-    probe: `${REACHED}; a pagina de documentacao respondeu, mas a API exige cadastro e token, entao o acesso aos DADOS continua nao demonstrado (F07)`,
-    knownLimitations: ['uso da API exige cadastro e token', 'limites de requisicao a confirmar'],
+    integrationStatus: 'connector_built',
+    probe:
+      'API autenticada em 2026-09-15: token aceito, resposta JSON valida e 15 documentos relacionados ' +
+      'a emenda 202423760008; conector baseado no OpenAPI e em respostas observadas',
+    knownLimitations: [
+      'a API nao oferece filtro por municipio; a coleta enriquece codigos oficiais identificados por F03 e F10',
+      'valores sao posicoes acumuladas e nao devem ser somados entre atualizacoes ou fontes sem conciliacao',
+      'token obrigatorio, mantido somente em segredo do GitHub Actions',
+    ],
     datasets: [{ name: 'emendas', recordType: 'amendment', ...DAILY }],
   },
   {
